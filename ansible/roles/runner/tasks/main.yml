@@ -1,0 +1,19 @@
+---
+- name: Install dependencies
+  apt:
+    name: ["curl","jq","unzip","git" ]
+    state: present
+
+- name: Create runner directory
+  file:
+    path: /opt/github-runner
+    state: directory
+    owner: ubuntu
+    group: ubuntu
+    mode: '0755'
+
+- name: Download GitHub Runner (placeholder)
+  debug:
+    msg: "Télécharger et enregistrer le runner avec le token GitHub (GH_TOKEN), puis créer un service systemd pour l'auto-start."
+
+# Registration requires a repository/org token. Automatiser via the GitHub Actions Runner registration API.

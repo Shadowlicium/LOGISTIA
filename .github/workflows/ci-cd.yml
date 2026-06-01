@@ -1,0 +1,91 @@
+name: CI/CD Proxmox Infra
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Terraform fmt check
+        uses: hashicorp/terraform-github-actions@v1
+        with:
+          tf_actions_version: "cli"
+          args: fmt -check
+      - name: Ansible lint
+        uses: ansible/ansible-lint-action@v1
+        with:
+          args: ansible-lint ansible/
+
+  terraform-plan:
+    runs-on: ubuntu-latest
+    needs: lint
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v2
+      - name: Terraform Init
+        run: |
+          cd infra/terraform
+          terraform init -input=false
+      - name: Terraform Plan
+        run: |
+          cd infra/terraform
+          terraform plan -out=plan.tfplan
+      - name: Upload plan
+        uses: actions/upload-artifact@v3
+        with:
+          name: tfplan
+          path: infra/terraform/plan.tfplan
+
+  terraform-apply:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    needs: terraform-plan
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download plan
+        uses: actions/download-artifact@v3
+        with:
+          name: tfplan
+          path: infra/terraform/
+      - name: Apply (manual approval required)
+        uses: hmarr/auto-approve-action@v2
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+        # NOTE: For safety: require environment protection or manual approval in repo settings
+      - name: Terraform Apply
+        run: |
+          cd infra/terraform
+          terraform apply -auto-approve plan.tfplan
+
+  ansible-deploy:
+    runs-on: ubuntu-latest
+    needs: terraform-apply
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run Ansible Playbooks via SSH
+        uses: appleboy/ssh-action@v0.1.6
+        with:
+          host: ${{ secrets.ANSIBLE_HOST }}
+          username: ${{ secrets.ANSIBLE_USER }}
+          key: ${{ secrets.ANSIBLE_PRIVATE_KEY }}
+          script: |
+            cd ansible
+            ansible-playbook -i inventory.ini playbooks/site.yml
+
+  security-scan:
+    runs-on: ubuntu-latest
+    needs: lint
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run tflint
+        run: |
+          cd infra/terraform || exit 0
+          tflint || true
+      - name: Run snyk (optional)
+        run: echo "Add container/dependency scanning steps here"

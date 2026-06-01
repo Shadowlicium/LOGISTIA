@@ -1,0 +1,76 @@
+---
+- name: Update apt cache
+  apt:
+    update_cache: yes
+
+- name: Install Dovecot packages
+  apt:
+    name:
+      - dovecot-core
+      - dovecot-imapd
+      - dovecot-pop3d
+      - dovecot-lmtpd
+    state: present
+    update_cache: yes
+
+- name: Ensure SSL directories exist
+  file:
+    path: /etc/ssl/private
+    state: directory
+    owner: root
+    group: root
+    mode: '0700'
+
+- name: Create self-signed certificate for Dovecot (if absent)
+  command: >
+    openssl req -new -x509 -days 365 -nodes -subj "/CN={{ ansible_fqdn | default('mail.local') }}" \
+    -out /etc/ssl/certs/dovecot.pem -keyout /etc/ssl/private/dovecot.pem
+  args:
+    creates: /etc/ssl/certs/dovecot.pem
+
+- name: Ensure dovecot service is enabled and started
+  service:
+    name: dovecot
+    state: started
+    enabled: yes
+
+- name: Deploy Dovecot config with LMTP socket for Postfix
+  copy:
+    dest: /etc/dovecot/dovecot.conf
+    content: |
+      disable_plaintext_auth = yes
+      mail_location = maildir:~/Maildir
+      protocols = imap pop3 lmtp
+      ssl = required
+      ssl_cert = </etc/ssl/certs/dovecot.pem
+      ssl_key = </etc/ssl/private/dovecot.pem
+
+      service lmtp {
+        unix_listener /var/spool/postfix/private/dovecot-lmtp {
+          mode = 0600
+          user = postfix
+          group = postfix
+        }
+      }
+    owner: root
+    group: root
+    mode: '0644'
+  notify: Restart dovecot
+
+- name: Ensure maildirs root exists (placeholder)
+  file:
+    path: /var/mail/vmail
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+
+- name: Note - create mail users or integrate with virtual DB
+  debug:
+    msg: "Créer utilisateurs mail (system ou virtual) selon ton choix."
+
+handlers:
+  - name: Restart dovecot
+    service:
+      name: dovecot
+      state: restarted

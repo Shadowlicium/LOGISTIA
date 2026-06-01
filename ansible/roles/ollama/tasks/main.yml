@@ -1,0 +1,19 @@
+---
+- name: Install prerequisites
+  apt:
+    name: ["curl","git"]
+    state: present
+
+- name: Placeholder - install Ollama
+  debug:
+    msg: "Installer Ollama/outil IA ici. Dépend des binaires/distribution — suivre la doc d'Ollama."
+
+- name: Ensure directories for logs exist
+  file:
+    path: /var/log/ollama
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+
+# Pour l'analyse de logs: installer un agent (filebeat/rsyslog) et configurer scripts d'analyse via Ollama

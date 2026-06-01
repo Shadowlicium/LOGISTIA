@@ -1,0 +1,26 @@
+---
+- name: Install rsync and cron
+  apt:
+    name: ["rsync","cron"]
+    state: present
+
+- name: Create backup script
+  copy:
+    dest: /usr/local/bin/run-backup.sh
+    content: |
+      #!/bin/bash
+      rsync -av --delete /var/www/ /backup/www/
+    mode: '0755'
+
+- name: Ensure /backup exists
+  file:
+    path: /backup
+    state: directory
+    mode: '0755'
+
+- name: Add cron job for daily backup
+  cron:
+    name: "daily backup"
+    minute: 0
+    hour: 2
+    job: "/usr/local/bin/run-backup.sh"
