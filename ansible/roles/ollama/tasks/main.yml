@@ -1,14 +1,34 @@
 ---
-- name: Install prerequisites
+- name: Update apt cache
   apt:
-    name: ["curl","git"]
+    update_cache: yes
+
+- name: Install Ollama log analysis dependencies
+  apt:
+    name:
+      - python3
+      - python3-venv
+      - rsyslog
+      - jq
     state: present
 
-- name: Placeholder - install Ollama
-  debug:
-    msg: "Installer Ollama/outil IA ici. Dépend des binaires/distribution — suivre la doc d'Ollama."
+- name: Ensure Ollama work directory exists
+  file:
+    path: /opt/ollama
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
 
-- name: Ensure directories for logs exist
+- name: Copy Ollama log analyzer script
+  copy:
+    src: log_analyzer.py
+    dest: /opt/ollama/log_analyzer.py
+    owner: root
+    group: root
+    mode: '0755'
+
+- name: Ensure Ollama log directory exists
   file:
     path: /var/log/ollama
     state: directory
@@ -16,4 +36,59 @@
     group: root
     mode: '0755'
 
-# Pour l'analyse de logs: installer un agent (filebeat/rsyslog) et configurer scripts d'analyse via Ollama
+- name: Create Ollama systemd service
+  copy:
+    dest: /etc/systemd/system/ollama-log-analysis.service
+    content: |
+      [Unit]
+      Description=Ollama Log Analysis Service
+      After=network.target
+
+      [Service]
+      Type=oneshot
+      ExecStart=/usr/bin/python3 /opt/ollama/log_analyzer.py
+      WorkingDirectory=/opt/ollama
+      StandardOutput=append:/var/log/ollama/analysis.log
+      StandardError=append:/var/log/ollama/analysis.log
+    owner: root
+    group: root
+    mode: '0644'
+  notify: Reload systemd
+
+- name: Create Ollama systemd timer
+  copy:
+    dest: /etc/systemd/system/ollama-log-analysis.timer
+    content: |
+      [Unit]
+      Description=Run Ollama log analysis every 5 minutes
+
+      [Timer]
+      OnBootSec=1min
+      OnUnitActiveSec=5m
+      Persistent=true
+
+      [Install]
+      WantedBy=timers.target
+    owner: root
+    group: root
+    mode: '0644'
+  notify: Reload systemd
+
+- name: Enable and start Ollama timer
+  systemd:
+    name: ollama-log-analysis.timer
+    enabled: yes
+    state: started
+    daemon_reload: yes
+
+- name: Ensure Ollama analysis log exists
+  file:
+    path: /var/log/ollama/analysis.log
+    state: touch
+    owner: root
+    group: root
+    mode: '0644'
+
+handlers:
+  - name: Reload systemd
+    command: systemctl daemon-reload

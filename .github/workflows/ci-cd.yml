@@ -20,6 +20,10 @@ jobs:
         uses: ansible/ansible-lint-action@v1
         with:
           args: ansible-lint ansible/
+      - name: Ansible syntax check
+        run: |
+          cd ansible
+          ansible-playbook --syntax-check playbooks/site.yml
 
   terraform-plan:
     runs-on: ubuntu-latest
@@ -83,9 +87,25 @@ jobs:
     needs: lint
     steps:
       - uses: actions/checkout@v4
+      - name: Install TFLint
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y unzip curl
+          curl -sL -o tflint.zip https://github.com/terraform-linters/tflint/releases/download/v0.45.0/tflint_linux_amd64.zip
+          unzip -o tflint.zip
+          sudo install -m 0755 tflint /usr/local/bin/tflint
       - name: Run tflint
         run: |
           cd infra/terraform || exit 0
-          tflint || true
-      - name: Run snyk (optional)
-        run: echo "Add container/dependency scanning steps here"
+          tflint
+      - name: Run Trivy filesystem scan
+        uses: aquasecurity/trivy-action@v2
+        with:
+          scan-type: fs
+          format: table
+          exit-code: 1
+          severity: CRITICAL,HIGH,MEDIUM
+      - name: Check Ansible syntax again for security scan
+        run: |
+          cd ansible
+          ansible-playbook --syntax-check playbooks/site.yml
