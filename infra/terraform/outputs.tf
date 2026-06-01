@@ -1,5 +1,5 @@
 output "web_vmid" {
-  value = proxmox_vm_qemu.web.vmid
+  value       = proxmox_vm_qemu.web.vmid
   description = "VMID du serveur web"
 }
 

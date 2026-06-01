@@ -1,12 +1,68 @@
-variable "name" { type = string }
-variable "target_node" { type = string }
-variable "vmid" { type = number }
-variable "cores" { type = number }
-variable "memory" { type = number }
-variable "scsihw" { type = string, default = "virtio-scsi-pci" }
-variable "disk_size" { type = string }
-variable "storage" { type = string }
-variable "net_model" { type = string, default = "virtio" }
-variable "bridge" { type = string }
-variable "vlan" { type = number }
-variable "cicustom" { type = any, default = null }
+variable "name" {
+  type = string
+}
+
+variable "target_node" {
+  type = string
+}
+
+variable "vmid" {
+  type = number
+}
+
+variable "ostemplate" {
+  type = string
+}
+
+variable "root_password" {
+  type = string
+}
+
+variable "ssh_keys" {
+  type = list(string)
+  default = []
+}
+
+variable "cores" {
+  type = number
+}
+
+variable "memory" {
+  type = number
+}
+
+variable "swap" {
+  type = number
+  default = 512
+}
+
+variable "rootfs_size" {
+  type = string
+}
+
+variable "storage" {
+  type = string
+}
+
+variable "bridge" {
+  type = string
+}
+
+variable "vlan" {
+  type = number
+}
+
+variable "ip" {
+  description = "Adresse IP statique du conteneur avec masque CIDR"
+  type = string
+}
+
+variable "gateway" {
+  description = "Passerelle pour le conteneur"
+  type = string
+}
+
+variable "nesting" {
+  type = bool
+  default = true
+}

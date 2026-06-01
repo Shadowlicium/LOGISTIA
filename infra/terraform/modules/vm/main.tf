@@ -1,22 +1,18 @@
-resource "proxmox_vm_qemu" "this" {
-  name        = var.name
+resource "proxmox_lxc" "this" {
+  hostname    = var.name
   target_node = var.target_node
   vmid        = var.vmid
+  ostemplate  = var.ostemplate
+  password    = var.root_password
   cores       = var.cores
   memory      = var.memory
-  scsihw      = var.scsihw
-
-  disk {
-    size    = var.disk_size
-    type    = "scsi"
-    storage = var.storage
+  swap        = var.swap
+  rootfs      = "${var.storage}:${var.rootfs_size}"
+  net0        = "name=eth0,bridge=${var.bridge},tag=${var.vlan},ip=${var.ip},gw=${var.gateway},firewall=1"
+  features    = {
+    nesting = var.nesting
   }
-
-  network {
-    model  = var.net_model
-    bridge = var.bridge
-    tag    = var.vlan
-  }
-
-  cicustom = var.cicustom
+  onboot       = true
+  unprivileged = true
+  ssh_keys     = var.ssh_keys
 }
