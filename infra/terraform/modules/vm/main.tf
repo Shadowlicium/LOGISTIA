@@ -8,10 +8,10 @@ terraform {
 }
 
 resource "proxmox_virtual_environment_container" "this" {
-  description   = "Managed by Terraform"
-  node_name     = var.target_node
-  vm_id         = var.vmid
-  unprivileged  = true
+  description  = "Managed by Terraform"
+  node_name    = var.target_node
+  vm_id        = var.vmid
+  unprivileged = true
 
   features {
     nesting = var.nesting

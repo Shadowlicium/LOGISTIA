@@ -33,7 +33,7 @@ variable "memory" {
 }
 
 variable "swap" {
-  type = number
+  type    = number
   default = 512
 }
 
