@@ -28,11 +28,6 @@ output "ollama_vmid" {
   description = "VMID d'Ollama IA"
 }
 
-output "runner_vmid" {
-  value       = module.vm_runner.vmid
-  description = "VMID du GitHub Runner"
-}
-
 output "backup_vmid" {
   value       = module.vm_backup.vmid
   description = "VMID du serveur de backup"

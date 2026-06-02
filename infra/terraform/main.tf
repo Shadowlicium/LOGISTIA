@@ -117,23 +117,6 @@ module "vm_ollama" {
   ssh_keys      = compact([var.ssh_public_key])
 }
 
-module "vm_runner" {
-  source        = "./modules/vm"
-  name          = "gh-runner"
-  target_node   = var.proxmox_node
-  vmid          = var.vmid_start + 30
-  cores         = 1
-  memory        = 2048
-  rootfs_size   = "10"
-  storage       = var.proxmox_storage
-  bridge        = var.proxmox_bridge
-  vlan          = var.vlan_runner
-  ip            = "10.10.30.10/24"
-  gateway       = var.gateway_runner
-  ostemplate    = var.proxmox_ostemplate
-  ssh_keys      = compact([var.ssh_public_key])
-}
-
 module "vm_backup" {
   source        = "./modules/vm"
   name          = "backup"

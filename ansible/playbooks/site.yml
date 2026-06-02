@@ -34,11 +34,6 @@
   roles:
     - ollama
 
-- hosts: runners
-  become: yes
-  roles:
-    - runner
-
 - hosts: backups
   become: yes
   roles:

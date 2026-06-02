@@ -45,12 +45,6 @@ variable "vlan_security" {
   default     = 40
 }
 
-variable "vlan_runner" {
-  description = "VLAN ID pour le GitHub runner self-hosted"
-  type        = number
-  default     = 30
-}
-
 variable "vlan_backup" {
   description = "VLAN ID pour le serveur de backup"
   type        = number
@@ -73,12 +67,6 @@ variable "gateway_security" {
   description = "Passerelle pour le VLAN supervision/IA"
   type        = string
   default     = "10.10.40.1"
-}
-
-variable "gateway_runner" {
-  description = "Passerelle pour le VLAN Runner"
-  type        = string
-  default     = "10.10.30.1"
 }
 
 variable "gateway_backup" {

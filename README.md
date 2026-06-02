@@ -2,7 +2,7 @@
 
 Infrastructure de fin d'année basée sur Proxmox, Terraform, Ansible et GitHub Actions.
 
-L'objectif est de déployer des conteneurs LXC séparés par VLAN, avec une DMZ, une zone data, une zone supervision/IA, un runner CI/CD interne et une zone backup. Les secrets restent hors du dépôt.
+L'objectif est de déployer des conteneurs LXC séparés par VLAN, avec une DMZ, une zone data, une zone supervision/IA et une zone backup. Les secrets restent hors du dépôt.
 
 ## Architecture
 
@@ -15,9 +15,6 @@ L'objectif est de déployer des conteneurs LXC séparés par VLAN, avec une DMZ,
 - **VLAN 20 - Data**
   - `db` (`10.10.20.10`) : PostgreSQL
   - `mail-data` (`10.10.20.12`) : serveur mail interne Postfix + Dovecot
-
-- **VLAN 30 - Travail / CI**
-  - `gh-runner` (`10.10.30.10`) : GitHub Actions self-hosted runner
 
 - **VLAN 40 - Supervision & IA**
   - `grafana` (`10.10.40.10`) : supervision
@@ -33,7 +30,7 @@ L'objectif est de déployer des conteneurs LXC séparés par VLAN, avec une DMZ,
 
 - Les conteneurs ne sont pas exposés directement à Internet.
 - Le firewall Debian route et filtre les VLANs.
-- Le GitHub runner est dans le réseau interne et peut joindre les conteneurs en SSH.
+- Le GitHub runner doit être installé hors Terraform dans le réseau interne, par exemple en VLAN 30.
 - Ansible part du runner ou d'une machine d'administration ayant accès aux VLANs.
 - Le mail arrive sur `mail-relay` en DMZ, est analysé, puis est relayé en SMTP vers `mail-data` dans le VLAN 20.
 
@@ -94,13 +91,13 @@ Le playbook :
 
 ## GitHub Runner
 
-Le runner `gh-runner` est un conteneur interne en VLAN 30. Il sert à exécuter les workflows qui doivent accéder à Proxmox et aux VLANs privés.
+Le runner GitHub Actions n'est pas créé par Terraform dans ce dépôt. Il doit être mis en place manuellement sur une machine interne capable d'accéder à Proxmox et aux VLANs privés, par exemple dans le VLAN 30.
 
-Après création du conteneur :
+Installation recommandée :
 
 1. Aller dans GitHub : `Settings` -> `Actions` -> `Runners` -> `New self-hosted runner`.
 2. Choisir Linux x64.
-3. Se connecter sur `gh-runner`.
+3. Se connecter sur la machine choisie pour héberger le runner.
 4. Copier/coller les commandes affichées par GitHub.
 
 Le dépôt ne maintient pas de script d'installation custom du runner : les commandes officielles GitHub sont la source fiable.
@@ -135,7 +132,6 @@ ssh -i ~/.ssh/logistia_ed25519 mail-data@10.10.20.12
 ssh -i ~/.ssh/logistia_ed25519 mail-relay@10.10.10.12
 ssh -i ~/.ssh/logistia_ed25519 grafana@10.10.40.10
 ssh -i ~/.ssh/logistia_ed25519 ollama-ia@10.10.40.11
-ssh -i ~/.ssh/logistia_ed25519 gh-runner@10.10.30.10
 ssh -i ~/.ssh/logistia_ed25519 backup@10.10.99.10
 ```
 
@@ -167,5 +163,5 @@ Si les VLANs ne sont pas accessibles directement depuis le poste, passer par Pro
 - Les fichiers `terraform.tfvars`, `terraform.tfstate`, `.terraform/` et les vrais fichiers `group_vars/*.yml` sont ignorés par Git.
 - Les mots de passe mail doivent être stockés dans `ansible/group_vars/mail.yml`, idéalement chiffré avec Ansible Vault.
 - Les conteneurs ne sont pas exposés directement à Internet.
-- Le runner self-hosted est interne au réseau.
+- Le runner self-hosted doit être interne au réseau, mais il est géré hors Terraform.
 - Le state Terraform devrait idéalement être déplacé vers un backend distant chiffré.
