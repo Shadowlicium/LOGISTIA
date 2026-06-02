@@ -25,54 +25,10 @@
     group: github-runner
     mode: '0755'
 
-- name: Copy GitHub Runner installation script
-  copy:
-    src: install-github-runner.sh
-    dest: /opt/github-runner/install-github-runner.sh
-    owner: root
-    group: root
-    mode: '0755'
-
 - name: Display GitHub Runner setup instructions
   debug:
     msg: |
-      ======================================
-      GitHub Actions Runner Setup (Manual)
-      ======================================
-
-      The installation script is ready at: /opt/github-runner/install-github-runner.sh
-
-      *** IMPORTANT: Complete these steps manually ***
-
-      1. Get a runner token from GitHub:
-         - Repository level: https://github.com/<owner>/<repo>/settings/actions/runners/new
-         - Organization level: https://github.com/organizations/<org>/settings/actions/runners/new
-
-      2. SSH to the runner VM (10.10.30.10):
-         ssh root@10.10.30.10
-
-      3. Run the installation script:
-
-         For REPOSITORY runner:
-         export GITHUB_OWNER=your-username
-         export GITHUB_REPO=your-repo
-         export RUNNER_TOKEN=replace-with-runner-token
-         /opt/github-runner/install-github-runner.sh
-
-         For ORGANIZATION runner:
-         export GITHUB_ORG=your-org
-         export RUNNER_TOKEN=replace-with-runner-token
-         /opt/github-runner/install-github-runner.sh
-
-      4. Verify the runner is running:
-         systemctl status actions.runner.*
-
-      5. Check runner logs:
-         journalctl -u actions.runner.* -f
-
-      The runner will:
-      - Auto-register with your GitHub repository/organization
-      - Start automatically on VM boot
-      - Be available in GitHub Actions workflows as "ubuntu-latest" (if default)
-
-      To use in workflows, add: runs-on: self-hosted
+      GitHub runner prerequisites are installed.
+      Finish the runner registration with the official commands from:
+      GitHub repository -> Settings -> Actions -> Runners -> New self-hosted runner.
+      Use Linux x64 and run the displayed commands on gh-runner.

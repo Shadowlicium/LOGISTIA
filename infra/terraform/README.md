@@ -41,4 +41,6 @@ Les conteneurs sont créés avec des IP statiques par VLAN. Les adresses par dé
 - gh-runner: 10.10.30.10/24
 - backup: 10.10.99.10/24
 
+Le VLAN 90 de management et le firewall Debian ne sont pas créés par Terraform dans ce dépôt. Ils sont considérés comme prérequis réseau pour accéder à Proxmox et router/filtrer les VLANs.
+
 Personnalisation: modifier les modules dans `infra/terraform/modules/` et utiliser des templates LXC Proxmox pour les conteneurs.
