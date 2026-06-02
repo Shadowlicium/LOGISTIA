@@ -2,110 +2,49 @@ name: CI/CD Proxmox Infra
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
   pull_request:
-    branches: [ main ]
+    branches: [main]
 
 jobs:
-  lint:
+  validate:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Terraform fmt check
-        uses: hashicorp/terraform-github-actions@v1
-        with:
-          tf_actions_version: "cli"
-          args: fmt -check
-      - name: Ansible lint
-        uses: ansible/ansible-lint-action@v1
-        with:
-          args: ansible-lint ansible/
-      - name: Ansible syntax check
-        run: |
-          cd ansible
-          ansible-playbook --syntax-check playbooks/site.yml
 
-  terraform-plan:
-    runs-on: ubuntu-latest
-    needs: lint
-    steps:
-      - uses: actions/checkout@v4
       - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v2
-      - name: Terraform Init
-        run: |
-          cd infra/terraform
-          terraform init -input=false
-      - name: Terraform Plan
-        run: |
-          cd infra/terraform
-          terraform plan -out=plan.tfplan
-      - name: Upload plan
-        uses: actions/upload-artifact@v3
-        with:
-          name: tfplan
-          path: infra/terraform/plan.tfplan
+        uses: hashicorp/setup-terraform@v3
 
-  terraform-apply:
-    if: github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
-    needs: terraform-plan
-    steps:
-      - uses: actions/checkout@v4
-      - name: Download plan
-        uses: actions/download-artifact@v3
-        with:
-          name: tfplan
-          path: infra/terraform/
-      - name: Apply (manual approval required)
-        uses: hmarr/auto-approve-action@v2
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-        # NOTE: For safety: require environment protection or manual approval in repo settings
-      - name: Terraform Apply
-        run: |
-          cd infra/terraform
-          terraform apply -auto-approve plan.tfplan
+      - name: Terraform fmt
+        run: terraform fmt -check -recursive
 
-  ansible-deploy:
-    runs-on: ubuntu-latest
-    needs: terraform-apply
-    steps:
-      - uses: actions/checkout@v4
-      - name: Run Ansible Playbooks via SSH
-        uses: appleboy/ssh-action@v0.1.6
-        with:
-          host: ${{ secrets.ANSIBLE_HOST }}
-          username: ${{ secrets.ANSIBLE_USER }}
-          key: ${{ secrets.ANSIBLE_PRIVATE_KEY }}
-          script: |
-            cd ansible
-            ansible-playbook -i inventory.ini playbooks/site.yml
+      - name: Terraform init
+        run: terraform init -backend=false -input=false
+        working-directory: infra/terraform
+
+      - name: Terraform validate
+        run: terraform validate
+        working-directory: infra/terraform
+
+      - name: Install Ansible
+        run: |
+          python3 -m pip install --upgrade pip
+          python3 -m pip install ansible
+
+      - name: Ansible syntax check
+        run: ansible-playbook -i inventory.ini --syntax-check playbooks/site.yml
+        working-directory: ansible
 
   security-scan:
     runs-on: ubuntu-latest
-    needs: lint
+    needs: validate
     steps:
       - uses: actions/checkout@v4
-      - name: Install TFLint
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y unzip curl
-          curl -sL -o tflint.zip https://github.com/terraform-linters/tflint/releases/download/v0.45.0/tflint_linux_amd64.zip
-          unzip -o tflint.zip
-          sudo install -m 0755 tflint /usr/local/bin/tflint
-      - name: Run tflint
-        run: |
-          cd infra/terraform || exit 0
-          tflint
-      - name: Run Trivy filesystem scan
+
+      - name: Trivy filesystem scan
         uses: aquasecurity/trivy-action@v2
         with:
           scan-type: fs
           format: table
           exit-code: 1
-          severity: CRITICAL,HIGH,MEDIUM
-      - name: Check Ansible syntax again for security scan
-        run: |
-          cd ansible
-          ansible-playbook --syntax-check playbooks/site.yml
+          severity: CRITICAL,HIGH

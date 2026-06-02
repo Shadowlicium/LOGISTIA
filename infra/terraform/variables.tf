@@ -1,5 +1,5 @@
 variable "proxmox_url" {
-  description = "URL de l'API Proxmox (ex: https://proxmox.local:8006/api2/json)"
+  description = "URL de l'API Proxmox (ex: https://proxmox.local:8006/). The provider strips a trailing /api2/json if present."
   type        = string
 }
 
@@ -14,7 +14,7 @@ variable "proxmox_password" {
 
 variable "proxmox_node" {
   type    = string
-  default = "pve"
+  default = "proxmox"
 }
 
 variable "proxmox_storage" {
@@ -78,7 +78,7 @@ variable "gateway_backup" {
 variable "proxmox_ostemplate" {
   description = "Chemin du template LXC Proxmox pour les conteneurs"
   type        = string
-  default     = "local:vztmpl/ubuntu-22.04-standard_22.04-1_amd64.tar.zst"
+  default     = "local:vztmpl/ubuntu-24.04-standard_24.04-2_amd64.tar.zst"
 }
 
 variable "ssh_public_key" {

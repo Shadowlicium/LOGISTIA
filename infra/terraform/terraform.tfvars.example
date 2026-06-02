@@ -1,0 +1,11 @@
+proxmox_url      = "https://proxmox.example.local:8006/api2/json"
+proxmox_user     = "terraform@pve"
+proxmox_password = "change-me"
+proxmox_node     = "proxmox"
+proxmox_storage  = "local-lvm"
+proxmox_bridge   = "vmbr0"
+
+root_password = "change-me"
+
+# Use an SSH public key for administration.
+ssh_public_key = "ssh-ed25519 AAAA..."

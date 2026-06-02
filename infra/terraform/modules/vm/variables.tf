@@ -15,11 +15,12 @@ variable "ostemplate" {
 }
 
 variable "root_password" {
-  type = string
+  type      = string
+  sensitive = true
 }
 
 variable "ssh_keys" {
-  type = list(string)
+  type    = list(string)
   default = []
 }
 
@@ -54,15 +55,15 @@ variable "vlan" {
 
 variable "ip" {
   description = "Adresse IP statique du conteneur avec masque CIDR"
-  type = string
+  type        = string
 }
 
 variable "gateway" {
   description = "Passerelle pour le conteneur"
-  type = string
+  type        = string
 }
 
 variable "nesting" {
-  type = bool
+  type    = bool
   default = true
 }

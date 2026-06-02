@@ -13,6 +13,15 @@
     state: present
     update_cache: yes
 
+- name: Ensure mail users are provided from protected variables
+  assert:
+    that:
+      - mail_users is defined
+      - mail_users | length > 0
+      - mail_users | selectattr('name', 'defined') | list | length == mail_users | length
+      - mail_users | selectattr('password', 'defined') | list | length == mail_users | length
+    fail_msg: "Define mail_users in ansible/group_vars/mail.yml, preferably encrypted with ansible-vault."
+
 - name: Ensure SSL directories exist
   file:
     path: /etc/ssl/private
@@ -35,36 +44,26 @@
     shell: /bin/bash
     create_home: yes
     password: "{{ item.password | password_hash('sha512') }}"
-  loop:
-    - { name: celia, password: "Celia1234!" }
-    - { name: christopher, password: "Chris1234!" }
-    - { name: norada, password: "Norada1234!" }
-    - { name: arthur, password: "Arthur1234!" }
+  loop: "{{ mail_users }}"
+  no_log: true
 
-- name: Ensure Maildir directories exist for mail users
+- name: Ensure Maildir root directories exist for mail users
   file:
-    path: "{{ item.path }}"
+    path: "/home/{{ item.name }}/Maildir"
     state: directory
-    owner: "{{ item.user }}"
-    group: "{{ item.user }}"
-    mode: "{{ item.mode }}"
-  loop:
-    - { user: celia, path: /home/celia/Maildir, mode: '0700' }
-    - { user: celia, path: /home/celia/Maildir/new, mode: '0700' }
-    - { user: celia, path: /home/celia/Maildir/cur, mode: '0700' }
-    - { user: celia, path: /home/celia/Maildir/tmp, mode: '0700' }
-    - { user: christopher, path: /home/christopher/Maildir, mode: '0700' }
-    - { user: christopher, path: /home/christopher/Maildir/new, mode: '0700' }
-    - { user: christopher, path: /home/christopher/Maildir/cur, mode: '0700' }
-    - { user: christopher, path: /home/christopher/Maildir/tmp, mode: '0700' }
-    - { user: norada, path: /home/norada/Maildir, mode: '0700' }
-    - { user: norada, path: /home/norada/Maildir/new, mode: '0700' }
-    - { user: norada, path: /home/norada/Maildir/cur, mode: '0700' }
-    - { user: norada, path: /home/norada/Maildir/tmp, mode: '0700' }
-    - { user: arthur, path: /home/arthur/Maildir, mode: '0700' }
-    - { user: arthur, path: /home/arthur/Maildir/new, mode: '0700' }
-    - { user: arthur, path: /home/arthur/Maildir/cur, mode: '0700' }
-    - { user: arthur, path: /home/arthur/Maildir/tmp, mode: '0700' }
+    owner: "{{ item.name }}"
+    group: "{{ item.name }}"
+    mode: '0700'
+  loop: "{{ mail_users }}"
+
+- name: Ensure Maildir subdirectories exist for mail users
+  file:
+    path: "/home/{{ item.0.name }}/Maildir/{{ item.1 }}"
+    state: directory
+    owner: "{{ item.0.name }}"
+    group: "{{ item.0.name }}"
+    mode: '0700'
+  loop: "{{ mail_users | product(['new', 'cur', 'tmp']) | list }}"
 
 - name: Deploy Dovecot config with LMTP socket for Postfix
   copy:

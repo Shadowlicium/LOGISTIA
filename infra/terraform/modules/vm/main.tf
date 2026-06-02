@@ -1,18 +1,64 @@
-resource "proxmox_lxc" "this" {
-  hostname    = var.name
-  target_node = var.target_node
-  vmid        = var.vmid
-  ostemplate  = var.ostemplate
-  password    = var.root_password
-  cores       = var.cores
-  memory      = var.memory
-  swap        = var.swap
-  rootfs      = "${var.storage}:${var.rootfs_size}"
-  net0        = "name=eth0,bridge=${var.bridge},tag=${var.vlan},ip=${var.ip},gw=${var.gateway},firewall=1"
-  features    = {
+terraform {
+  required_providers {
+    proxmox = {
+      source  = "bpg/proxmox"
+      version = "~> 0.108.0"
+    }
+  }
+}
+
+resource "proxmox_virtual_environment_container" "this" {
+  description   = "Managed by Terraform"
+  node_name     = var.target_node
+  vm_id         = var.vmid
+  unprivileged  = true
+
+  features {
     nesting = var.nesting
   }
-  onboot       = true
-  unprivileged = true
-  ssh_keys     = var.ssh_keys
+
+  initialization {
+    hostname = var.name
+
+    ip_config {
+      ipv4 {
+        address = var.ip
+        gateway = var.gateway
+      }
+    }
+
+    user_account {
+      password = var.root_password
+      keys     = var.ssh_keys
+    }
+  }
+
+  operating_system {
+    template_file_id = var.ostemplate
+    type             = "ubuntu"
+  }
+
+  network_interface {
+    name    = "eth0"
+    bridge  = var.bridge
+    vlan_id = var.vlan
+  }
+
+  disk {
+    datastore_id = var.storage
+    size         = var.rootfs_size
+  }
+
+  memory {
+    dedicated = var.memory
+    swap      = var.swap
+  }
+
+  startup {
+    order = 1
+  }
+
+  wait_for_ip {
+    ipv4 = true
+  }
 }

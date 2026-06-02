@@ -1,0 +1,58 @@
+name: Deploy with Self-Hosted Runner
+
+on:
+  workflow_dispatch:
+
+jobs:
+  terraform-apply:
+    runs-on: self-hosted
+    env:
+      TF_VAR_proxmox_url: ${{ secrets.PROXMOX_URL }}
+      TF_VAR_proxmox_user: ${{ secrets.PROXMOX_USER }}
+      TF_VAR_proxmox_password: ${{ secrets.PROXMOX_PASSWORD }}
+      TF_VAR_root_password: ${{ secrets.ROOT_PASSWORD }}
+      TF_VAR_ssh_public_key: ${{ secrets.SSH_PUBLIC_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Terraform init
+        run: terraform init -input=false
+        working-directory: infra/terraform
+
+      - name: Terraform plan
+        run: terraform plan -out=plan.tfplan
+        working-directory: infra/terraform
+
+      - name: Terraform apply
+        run: terraform apply -auto-approve plan.tfplan
+        working-directory: infra/terraform
+
+  ansible-deploy:
+    runs-on: self-hosted
+    needs: terraform-apply
+    env:
+      ANSIBLE_MAIL_VARS: ${{ secrets.ANSIBLE_MAIL_VARS }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Install Ansible
+        run: |
+          python3 -m pip install --upgrade pip
+          python3 -m pip install ansible
+
+      - name: Create local Ansible secrets file
+        run: |
+          umask 077
+          mkdir -p ansible/group_vars
+          printf '%s\n' "$ANSIBLE_MAIL_VARS" > ansible/group_vars/mail.yml
+
+      - name: Run Ansible playbook
+        run: ansible-playbook -i inventory.ini playbooks/site.yml
+        working-directory: ansible

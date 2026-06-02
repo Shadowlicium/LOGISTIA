@@ -1,7 +1,7 @@
 output "vmid" {
-  value = proxmox_vm_qemu.this.vmid
+  value = proxmox_virtual_environment_container.this.vm_id
 }
 
 output "name" {
-  value = proxmox_vm_qemu.this.name
+  value = var.name
 }

@@ -1,11 +1,35 @@
-- hosts: all
+- hosts: webservers
   become: yes
   roles:
     - web
+
+- hosts: databases
+  become: yes
+  roles:
     - db
+
+- hosts: monitoring
+  become: yes
+  roles:
     - grafana
+
+- hosts: mail
+  become: yes
+  roles:
     - postfix
     - dovecot
+
+- hosts: ai
+  become: yes
+  roles:
     - ollama
+
+- hosts: runners
+  become: yes
+  roles:
     - runner
+
+- hosts: backups
+  become: yes
+  roles:
     - backup

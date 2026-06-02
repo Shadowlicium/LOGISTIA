@@ -1,17 +1,17 @@
 terraform {
   required_providers {
     proxmox = {
-      source  = "Telmate/proxmox"
-      version = "~> 2.9"
+      source  = "bpg/proxmox"
+      version = "~> 0.108.0"
     }
   }
 }
 
 provider "proxmox" {
-  pm_api_url      = var.proxmox_url
-  pm_user         = var.proxmox_user
-  pm_password     = var.proxmox_password
-  pm_tls_insecure = true
+  endpoint = replace(var.proxmox_url, "/api2/json$", "")
+  username = var.proxmox_user
+  password = var.proxmox_password
+  insecure = true
 }
 
 # Conteneurs LXC pour réduire la consommation mémoire et s'adapter aux 24 Go max
@@ -22,7 +22,7 @@ module "vm_web" {
   vmid          = var.vmid_start + 10
   cores         = 1
   memory        = 1024
-  rootfs_size   = "8G"
+  rootfs_size   = "8"
   storage       = var.proxmox_storage
   bridge        = var.proxmox_bridge
   vlan          = var.vlan_dmz
@@ -30,9 +30,8 @@ module "vm_web" {
   gateway       = var.gateway_dmz
   ostemplate    = var.proxmox_ostemplate
   root_password = var.root_password
-  ssh_keys      = [var.ssh_public_key]
+  ssh_keys      = compact([var.ssh_public_key])
 }
-
 module "vm_db" {
   source        = "./modules/vm"
   name          = "db-postgres"
@@ -40,7 +39,7 @@ module "vm_db" {
   vmid          = var.vmid_start + 20
   cores         = 2
   memory        = 2048
-  rootfs_size   = "12G"
+  rootfs_size   = "12"
   storage       = var.proxmox_storage
   bridge        = var.proxmox_bridge
   vlan          = var.vlan_db
@@ -48,7 +47,7 @@ module "vm_db" {
   gateway       = var.gateway_db
   ostemplate    = var.proxmox_ostemplate
   root_password = var.root_password
-  ssh_keys      = [var.ssh_public_key]
+  ssh_keys      = compact([var.ssh_public_key])
 }
 
 module "vm_grafana" {
@@ -58,7 +57,7 @@ module "vm_grafana" {
   vmid          = var.vmid_start + 11
   cores         = 1
   memory        = 1024
-  rootfs_size   = "8G"
+  rootfs_size   = "8"
   storage       = var.proxmox_storage
   bridge        = var.proxmox_bridge
   vlan          = var.vlan_dmz
@@ -66,7 +65,7 @@ module "vm_grafana" {
   gateway       = var.gateway_dmz
   ostemplate    = var.proxmox_ostemplate
   root_password = var.root_password
-  ssh_keys      = [var.ssh_public_key]
+  ssh_keys      = compact([var.ssh_public_key])
 }
 
 module "vm_postfix" {
@@ -76,7 +75,7 @@ module "vm_postfix" {
   vmid          = var.vmid_start + 12
   cores         = 1
   memory        = 1024
-  rootfs_size   = "10G"
+  rootfs_size   = "10"
   storage       = var.proxmox_storage
   bridge        = var.proxmox_bridge
   vlan          = var.vlan_dmz
@@ -84,7 +83,7 @@ module "vm_postfix" {
   gateway       = var.gateway_dmz
   ostemplate    = var.proxmox_ostemplate
   root_password = var.root_password
-  ssh_keys      = [var.ssh_public_key]
+  ssh_keys      = compact([var.ssh_public_key])
 }
 
 module "vm_ollama" {
@@ -94,7 +93,7 @@ module "vm_ollama" {
   vmid          = var.vmid_start + 21
   cores         = 2
   memory        = 4096
-  rootfs_size   = "16G"
+  rootfs_size   = "16"
   storage       = var.proxmox_storage
   bridge        = var.proxmox_bridge
   vlan          = var.vlan_db
@@ -102,7 +101,7 @@ module "vm_ollama" {
   gateway       = var.gateway_db
   ostemplate    = var.proxmox_ostemplate
   root_password = var.root_password
-  ssh_keys      = [var.ssh_public_key]
+  ssh_keys      = compact([var.ssh_public_key])
 }
 
 module "vm_runner" {
@@ -112,7 +111,7 @@ module "vm_runner" {
   vmid          = var.vmid_start + 31
   cores         = 1
   memory        = 2048
-  rootfs_size   = "10G"
+  rootfs_size   = "10"
   storage       = var.proxmox_storage
   bridge        = var.proxmox_bridge
   vlan          = var.vlan_runner
@@ -120,7 +119,7 @@ module "vm_runner" {
   gateway       = var.gateway_runner
   ostemplate    = var.proxmox_ostemplate
   root_password = var.root_password
-  ssh_keys      = [var.ssh_public_key]
+  ssh_keys      = compact([var.ssh_public_key])
 }
 
 module "vm_backup" {
@@ -130,7 +129,7 @@ module "vm_backup" {
   vmid          = var.vmid_start + 99
   cores         = 1
   memory        = 1024
-  rootfs_size   = "12G"
+  rootfs_size   = "12"
   storage       = var.proxmox_storage
   bridge        = var.proxmox_bridge
   vlan          = var.vlan_backup
@@ -138,5 +137,5 @@ module "vm_backup" {
   gateway       = var.gateway_backup
   ostemplate    = var.proxmox_ostemplate
   root_password = var.root_password
-  ssh_keys      = [var.ssh_public_key]
+  ssh_keys      = compact([var.ssh_public_key])
 }

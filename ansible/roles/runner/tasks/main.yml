@@ -1,19 +1,78 @@
 ---
-- name: Install dependencies
+- name: Install GitHub Runner dependencies
   apt:
-    name: ["curl","jq","unzip","git" ]
+    name:
+      - curl
+      - wget
+      - jq
+      - unzip
+      - git
+      - build-essential
     state: present
+
+- name: Create GitHub Runner service user
+  user:
+    name: github-runner
+    shell: /bin/bash
+    create_home: yes
+    home: /home/github-runner
 
 - name: Create runner directory
   file:
     path: /opt/github-runner
     state: directory
-    owner: ubuntu
-    group: ubuntu
+    owner: github-runner
+    group: github-runner
     mode: '0755'
 
-- name: Download GitHub Runner (placeholder)
-  debug:
-    msg: "Télécharger et enregistrer le runner avec le token GitHub (GH_TOKEN), puis créer un service systemd pour l'auto-start."
+- name: Copy GitHub Runner installation script
+  copy:
+    src: install-github-runner.sh
+    dest: /opt/github-runner/install-github-runner.sh
+    owner: root
+    group: root
+    mode: '0755'
 
-# Registration requires a repository/org token. Automatiser via the GitHub Actions Runner registration API.
+- name: Display GitHub Runner setup instructions
+  debug:
+    msg: |
+      ======================================
+      GitHub Actions Runner Setup (Manual)
+      ======================================
+
+      The installation script is ready at: /opt/github-runner/install-github-runner.sh
+
+      *** IMPORTANT: Complete these steps manually ***
+
+      1. Get a runner token from GitHub:
+         - Repository level: https://github.com/<owner>/<repo>/settings/actions/runners/new
+         - Organization level: https://github.com/organizations/<org>/settings/actions/runners/new
+
+      2. SSH to the runner VM (10.10.30.10):
+         ssh root@10.10.30.10
+
+      3. Run the installation script:
+
+         For REPOSITORY runner:
+         export GITHUB_OWNER=your-username
+         export GITHUB_REPO=your-repo
+         export RUNNER_TOKEN=replace-with-runner-token
+         /opt/github-runner/install-github-runner.sh
+
+         For ORGANIZATION runner:
+         export GITHUB_ORG=your-org
+         export RUNNER_TOKEN=replace-with-runner-token
+         /opt/github-runner/install-github-runner.sh
+
+      4. Verify the runner is running:
+         systemctl status actions.runner.*
+
+      5. Check runner logs:
+         journalctl -u actions.runner.* -f
+
+      The runner will:
+      - Auto-register with your GitHub repository/organization
+      - Start automatically on VM boot
+      - Be available in GitHub Actions workflows as "ubuntu-latest" (if default)
+
+      To use in workflows, add: runs-on: self-hosted

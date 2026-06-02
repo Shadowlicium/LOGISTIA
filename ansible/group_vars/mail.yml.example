@@ -1,0 +1,13 @@
+# Copy this file to ansible/group_vars/mail.yml and encrypt it before committing:
+# ansible-vault encrypt ansible/group_vars/mail.yml
+#
+# The real ansible/group_vars/mail.yml file is ignored by Git.
+mail_users:
+  - name: celia
+    password: "replace-with-a-strong-password"
+  - name: christopher
+    password: "replace-with-a-strong-password"
+  - name: norada
+    password: "replace-with-a-strong-password"
+  - name: arthur
+    password: "replace-with-a-strong-password"

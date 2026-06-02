@@ -1,0 +1,36 @@
+# Terraform local state and generated files
+**/.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
+crash.log
+crash.*.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+# Local secrets
+*.tfvars
+*.tfvars.json
+!*.tfvars.example
+ansible/group_vars/**/*.yml
+ansible/group_vars/*.yml
+!ansible/group_vars/**/*.example.yml
+!ansible/group_vars/**/*.yml.example
+!ansible/group_vars/*.example.yml
+!ansible/group_vars/*.yml.example
+.env
+.env.*
+!.env.example
+
+# Python / Ansible generated files
+__pycache__/
+*.py[cod]
+*.retry
+
+# OS / editor noise
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

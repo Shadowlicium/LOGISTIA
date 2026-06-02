@@ -2,25 +2,29 @@ Terraform infra pour LOGISTIA
 
 Instructions rapides:
 
-1. Exporter variables d'environnement pour Proxmox:
+1. Créer un fichier local de variables:
 
 ```bash
-export TF_VAR_proxmox_url="https://proxmox.local:8006/api2/json"
-export TF_VAR_proxmox_user="terraform@pve"
-export TF_VAR_proxmox_password="<password>"
-export TF_VAR_root_password="<root-password>"
-export TF_VAR_ssh_public_key="$(cat ~/.ssh/id_rsa.pub)"
+cp terraform.tfvars.example terraform.tfvars
 ```
 
-2. Initialiser et planifier:
+`terraform.tfvars` contient des secrets et ne doit jamais être commité.
+
+2. Initialiser et valider:
 
 ```bash
 cd infra/terraform
 terraform init
+terraform validate
+```
+
+3. Planifier:
+
+```bash
 terraform plan
 ```
 
-3. Pour appliquer (attention — crée des conteneurs LXC):
+4. Pour appliquer (attention — crée des conteneurs LXC):
 
 ```bash
 terraform apply -auto-approve
