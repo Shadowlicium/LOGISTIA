@@ -73,7 +73,7 @@ module "vm_grafana" {
   source        = "./modules/vm"
   name          = "grafana"
   target_node   = var.proxmox_node
-  vmid          = var.vmid_start + 11
+  vmid          = var.vmid_start + 40
   cores         = 1
   memory        = 1024
   rootfs_size   = "8"
@@ -109,7 +109,7 @@ module "vm_ollama" {
   source        = "./modules/vm"
   name          = "ollama-ia"
   target_node   = var.proxmox_node
-  vmid          = var.vmid_start + 21
+  vmid          = var.vmid_start + 41
   cores         = 2
   memory        = 4096
   rootfs_size   = "16"
@@ -127,7 +127,7 @@ module "vm_runner" {
   source        = "./modules/vm"
   name          = "gh-runner"
   target_node   = var.proxmox_node
-  vmid          = var.vmid_start + 31
+  vmid          = var.vmid_start + 30
   cores         = 1
   memory        = 2048
   rootfs_size   = "10"

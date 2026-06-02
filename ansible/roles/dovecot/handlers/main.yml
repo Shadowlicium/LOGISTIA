@@ -1,0 +1,5 @@
+---
+- name: Restart dovecot
+  service:
+    name: dovecot
+    state: restarted

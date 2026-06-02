@@ -1,0 +1,13 @@
+---
+- name: Postmap transport
+  command: postmap /etc/postfix/transport
+
+- name: Restart rspamd
+  service:
+    name: rspamd
+    state: restarted
+
+- name: Restart postfix
+  service:
+    name: postfix
+    state: restarted

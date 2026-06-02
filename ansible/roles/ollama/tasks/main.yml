@@ -88,7 +88,3 @@
     owner: root
     group: root
     mode: '0644'
-
-handlers:
-  - name: Reload systemd
-    command: systemctl daemon-reload

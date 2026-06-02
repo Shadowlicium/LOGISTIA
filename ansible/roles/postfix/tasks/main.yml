@@ -73,9 +73,3 @@
     name: postfix
     state: started
     enabled: yes
-
-handlers:
-  - name: Restart postfix
-    service:
-      name: postfix
-      state: restarted
