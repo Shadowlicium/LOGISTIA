@@ -15,13 +15,21 @@
     name: postfix
     state: present
 
+- name: Ensure /etc/mailname contains the mail domain
+  copy:
+    dest: /etc/mailname
+    content: "mail.local\n"
+    owner: root
+    group: root
+    mode: '0644'
+
 - name: Deploy Postfix main.cf
   copy:
     dest: /etc/postfix/main.cf
     content: |
       myhostname = {{ ansible_fqdn | default('mailserver') }}
       myorigin = /etc/mailname
-      mydestination = $myhostname, localhost.$mydomain, localhost
+      mydestination = $myhostname, localhost.$mydomain, localhost, mail.local
       relayhost =
       inet_interfaces = all
       inet_protocols = ipv4
@@ -29,6 +37,12 @@
       virtual_transport = lmtp:unix:private/dovecot-lmtp
       smtpd_tls_cert_file=/etc/ssl/certs/dovecot.pem
       smtpd_tls_key_file=/etc/ssl/private/dovecot.pem
+      smtpd_tls_security_level = may
+      smtpd_tls_auth_only = yes
+      smtpd_sasl_type = dovecot
+      smtpd_sasl_path = private/auth
+      smtpd_sasl_auth_enable = yes
+      smtpd_recipient_restrictions = permit_sasl_authenticated, permit_mynetworks, reject_unauth_destination
     owner: root
     group: root
     mode: '0644'

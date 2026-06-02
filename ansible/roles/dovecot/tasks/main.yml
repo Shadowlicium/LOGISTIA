@@ -28,11 +28,43 @@
   args:
     creates: /etc/ssl/certs/dovecot.pem
 
-- name: Ensure dovecot service is enabled and started
-  service:
-    name: dovecot
-    state: started
-    enabled: yes
+- name: Create local mail users
+  user:
+    name: "{{ item.name }}"
+    comment: "Mail user {{ item.name }}"
+    shell: /bin/bash
+    create_home: yes
+    password: "{{ item.password | password_hash('sha512') }}"
+  loop:
+    - { name: celia, password: "Celia1234!" }
+    - { name: christopher, password: "Chris1234!" }
+    - { name: norada, password: "Norada1234!" }
+    - { name: arthur, password: "Arthur1234!" }
+
+- name: Ensure Maildir directories exist for mail users
+  file:
+    path: "{{ item.path }}"
+    state: directory
+    owner: "{{ item.user }}"
+    group: "{{ item.user }}"
+    mode: "{{ item.mode }}"
+  loop:
+    - { user: celia, path: /home/celia/Maildir, mode: '0700' }
+    - { user: celia, path: /home/celia/Maildir/new, mode: '0700' }
+    - { user: celia, path: /home/celia/Maildir/cur, mode: '0700' }
+    - { user: celia, path: /home/celia/Maildir/tmp, mode: '0700' }
+    - { user: christopher, path: /home/christopher/Maildir, mode: '0700' }
+    - { user: christopher, path: /home/christopher/Maildir/new, mode: '0700' }
+    - { user: christopher, path: /home/christopher/Maildir/cur, mode: '0700' }
+    - { user: christopher, path: /home/christopher/Maildir/tmp, mode: '0700' }
+    - { user: norada, path: /home/norada/Maildir, mode: '0700' }
+    - { user: norada, path: /home/norada/Maildir/new, mode: '0700' }
+    - { user: norada, path: /home/norada/Maildir/cur, mode: '0700' }
+    - { user: norada, path: /home/norada/Maildir/tmp, mode: '0700' }
+    - { user: arthur, path: /home/arthur/Maildir, mode: '0700' }
+    - { user: arthur, path: /home/arthur/Maildir/new, mode: '0700' }
+    - { user: arthur, path: /home/arthur/Maildir/cur, mode: '0700' }
+    - { user: arthur, path: /home/arthur/Maildir/tmp, mode: '0700' }
 
 - name: Deploy Dovecot config with LMTP socket for Postfix
   copy:
@@ -44,6 +76,23 @@
       ssl = required
       ssl_cert = </etc/ssl/certs/dovecot.pem
       ssl_key = </etc/ssl/private/dovecot.pem
+      auth_mechanisms = plain login
+
+      passdb {
+        driver = pam
+      }
+
+      userdb {
+        driver = passwd
+      }
+
+      service auth {
+        unix_listener /var/spool/postfix/private/auth {
+          mode = 0660
+          user = postfix
+          group = postfix
+        }
+      }
 
       service lmtp {
         unix_listener /var/spool/postfix/private/dovecot-lmtp {
@@ -57,17 +106,11 @@
     mode: '0644'
   notify: Restart dovecot
 
-- name: Ensure maildirs root exists (placeholder)
-  file:
-    path: /var/mail/vmail
-    state: directory
-    owner: root
-    group: root
-    mode: '0755'
-
-- name: Note - create mail users or integrate with virtual DB
-  debug:
-    msg: "Créer utilisateurs mail (system ou virtual) selon ton choix."
+- name: Ensure dovecot service is enabled and started
+  service:
+    name: dovecot
+    state: started
+    enabled: yes
 
 handlers:
   - name: Restart dovecot
