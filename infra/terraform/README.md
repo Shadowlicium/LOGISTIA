@@ -9,6 +9,7 @@ cp terraform.tfvars.example terraform.tfvars
 ```
 
 `terraform.tfvars` contient des secrets et ne doit jamais être commité.
+Les conteneurs reçoivent uniquement une clé SSH publique; aucun mot de passe root n'est injecté.
 
 2. Initialiser et valider:
 

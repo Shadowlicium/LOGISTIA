@@ -1,0 +1,5 @@
+# Copy this file to ansible/group_vars/all.yml.
+# A public key is not a secret, but the real file is ignored by Git to keep local config out of the repo.
+# It must match the private key used by your local Ansible machine or GitHub runner.
+admin_ssh_public_key: "ssh-ed25519 AAAA..."
+disable_password_ssh_login: true

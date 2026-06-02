@@ -5,7 +5,5 @@ proxmox_node     = "proxmox"
 proxmox_storage  = "local-lvm"
 proxmox_bridge   = "vmbr0"
 
-root_password = "change-me"
-
 # Use an SSH public key for administration.
 ssh_public_key = "ssh-ed25519 AAAA..."

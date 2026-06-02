@@ -10,7 +10,6 @@ jobs:
       TF_VAR_proxmox_url: ${{ secrets.PROXMOX_URL }}
       TF_VAR_proxmox_user: ${{ secrets.PROXMOX_USER }}
       TF_VAR_proxmox_password: ${{ secrets.PROXMOX_PASSWORD }}
-      TF_VAR_root_password: ${{ secrets.ROOT_PASSWORD }}
       TF_VAR_ssh_public_key: ${{ secrets.SSH_PUBLIC_KEY }}
     steps:
       - uses: actions/checkout@v4
@@ -37,6 +36,8 @@ jobs:
     needs: terraform-apply
     env:
       ANSIBLE_MAIL_VARS: ${{ secrets.ANSIBLE_MAIL_VARS }}
+      ANSIBLE_ADMIN_SSH_PUBLIC_KEY: ${{ secrets.SSH_PUBLIC_KEY }}
+      ANSIBLE_SSH_PRIVATE_KEY: ${{ secrets.ANSIBLE_SSH_PRIVATE_KEY }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -47,10 +48,19 @@ jobs:
           python3 -m pip install --upgrade pip
           python3 -m pip install ansible
 
-      - name: Create local Ansible secrets file
+      - name: Configure SSH key for Ansible
+        run: |
+          umask 077
+          mkdir -p ~/.ssh
+          printf '%s\n' "$ANSIBLE_SSH_PRIVATE_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keygen -y -f ~/.ssh/id_ed25519 > ~/.ssh/id_ed25519.pub
+
+      - name: Create local Ansible variables files
         run: |
           umask 077
           mkdir -p ansible/group_vars
+          printf 'admin_ssh_public_key: >-\n  %s\ndisable_password_ssh_login: true\n' "$ANSIBLE_ADMIN_SSH_PUBLIC_KEY" > ansible/group_vars/all.yml
           printf '%s\n' "$ANSIBLE_MAIL_VARS" > ansible/group_vars/mail.yml
 
       - name: Run Ansible playbook

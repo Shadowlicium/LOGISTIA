@@ -51,15 +51,23 @@ cp terraform.tfvars.example terraform.tfvars
 # Ce fichier est ignoré par Git.
 ```
 
-2. **Crée les variables Ansible sensibles en local**:
+2. **Crée les variables Ansible locales**:
 
 ```bash
 cd ../..
+cp ansible/group_vars/all.yml.example ansible/group_vars/all.yml
 cp ansible/group_vars/mail.yml.example ansible/group_vars/mail.yml
 ansible-vault encrypt ansible/group_vars/mail.yml
 ```
 
-3. **Configure l'inventaire Ansible** si les IPs diffèrent:
+3. **Configure ta clé SSH locale pour Ansible**:
+
+```bash
+# La clé privée doit correspondre à ssh_public_key dans terraform.tfvars.
+ssh-add ~/.ssh/id_ed25519
+```
+
+4. **Configure l'inventaire Ansible** si les IPs diffèrent:
 
 ```bash
 # Édite ansible/inventory.ini avec les bonnes adresses IP
@@ -99,6 +107,7 @@ ansible-playbook -i ansible/inventory.ini ansible/playbooks/site.yml --ask-vault
 
 Cela va :
 - Installer et configurer Apache, PostgreSQL, Grafana, le relay mail, le serveur mail interne, Ollama, etc.
+- Créer un utilisateur d'administration par machine avec une clé SSH
 - Créer les utilisateurs mail définis dans tes variables Ansible locales
 - Configurer les certificats SSL auto-signés
 - Démarrer tous les services
@@ -219,6 +228,16 @@ Le workflow `.github/workflows/ci-cd.yml` effectue :
 - Vérifie que l'inventaire contient les bonnes adresses IP
 - Test : `ssh -i /path/to/key root@10.10.10.10`
 - Assure-toi que la clé SSH publique est injectée dans les VMs (voir `ssh_public_key` dans variables.tf)
+- Après le premier passage Ansible, tu peux aussi tester l'utilisateur de la machine : `ssh web-apache@10.10.10.10`
+
+### Secrets GitHub nécessaires au runner self-hosted
+
+Pour le workflow `.github/workflows/deploy-with-self-hosted-runner.yml`, configure ces secrets dans GitHub:
+
+- `PROXMOX_URL`, `PROXMOX_USER`, `PROXMOX_PASSWORD`
+- `SSH_PUBLIC_KEY`: clé publique injectée par Terraform dans les conteneurs
+- `ANSIBLE_SSH_PRIVATE_KEY`: clé privée correspondante, utilisée par le runner pour se connecter en SSH
+- `ANSIBLE_MAIL_VARS`: contenu YAML des variables mail, avec les mots de passe des comptes
 
 ### Les services ne démarrent pas
 

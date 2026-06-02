@@ -29,7 +29,6 @@ module "vm_web" {
   ip            = "10.10.10.10/24"
   gateway       = var.gateway_dmz
   ostemplate    = var.proxmox_ostemplate
-  root_password = var.root_password
   ssh_keys      = compact([var.ssh_public_key])
 }
 
@@ -47,7 +46,6 @@ module "vm_db" {
   ip            = "10.10.20.10/24"
   gateway       = var.gateway_db
   ostemplate    = var.proxmox_ostemplate
-  root_password = var.root_password
   ssh_keys      = compact([var.ssh_public_key])
 }
 
@@ -65,7 +63,6 @@ module "vm_mail_backend" {
   ip            = "10.10.20.12/24"
   gateway       = var.gateway_db
   ostemplate    = var.proxmox_ostemplate
-  root_password = var.root_password
   ssh_keys      = compact([var.ssh_public_key])
 }
 
@@ -83,7 +80,6 @@ module "vm_grafana" {
   ip            = "10.10.40.10/24"
   gateway       = var.gateway_security
   ostemplate    = var.proxmox_ostemplate
-  root_password = var.root_password
   ssh_keys      = compact([var.ssh_public_key])
 }
 
@@ -101,7 +97,6 @@ module "vm_postfix" {
   ip            = "10.10.10.12/24"
   gateway       = var.gateway_dmz
   ostemplate    = var.proxmox_ostemplate
-  root_password = var.root_password
   ssh_keys      = compact([var.ssh_public_key])
 }
 
@@ -119,7 +114,6 @@ module "vm_ollama" {
   ip            = "10.10.40.11/24"
   gateway       = var.gateway_security
   ostemplate    = var.proxmox_ostemplate
-  root_password = var.root_password
   ssh_keys      = compact([var.ssh_public_key])
 }
 
@@ -137,7 +131,6 @@ module "vm_runner" {
   ip            = "10.10.30.10/24"
   gateway       = var.gateway_runner
   ostemplate    = var.proxmox_ostemplate
-  root_password = var.root_password
   ssh_keys      = compact([var.ssh_public_key])
 }
 
@@ -155,6 +148,5 @@ module "vm_backup" {
   ip            = "10.10.99.10/24"
   gateway       = var.gateway_backup
   ostemplate    = var.proxmox_ostemplate
-  root_password = var.root_password
   ssh_keys      = compact([var.ssh_public_key])
 }

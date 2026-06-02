@@ -28,8 +28,7 @@ resource "proxmox_virtual_environment_container" "this" {
     }
 
     user_account {
-      password = var.root_password
-      keys     = var.ssh_keys
+      keys = var.ssh_keys
     }
   }
 

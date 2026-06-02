@@ -1,0 +1,54 @@
+---
+- name: Ensure admin SSH public key is provided
+  assert:
+    that:
+      - admin_ssh_public_key is defined
+      - admin_ssh_public_key | length > 0
+    fail_msg: "Define admin_ssh_public_key in ansible/group_vars/all.yml or via GitHub Secrets."
+
+- name: Ensure sudo is installed
+  apt:
+    name: sudo
+    state: present
+    update_cache: yes
+
+- name: Create machine administration user
+  user:
+    name: "{{ machine_user }}"
+    shell: /bin/bash
+    create_home: yes
+    groups: sudo
+    append: yes
+
+- name: Install SSH key for machine administration user
+  authorized_key:
+    user: "{{ machine_user }}"
+    key: "{{ admin_ssh_public_key }}"
+    state: present
+
+- name: Allow passwordless sudo for machine administration user
+  copy:
+    dest: "/etc/sudoers.d/{{ machine_user }}"
+    content: "{{ machine_user }} ALL=(ALL) NOPASSWD:ALL\n"
+    owner: root
+    group: root
+    mode: '0440'
+    validate: "visudo -cf %s"
+
+- name: Disable SSH password authentication
+  lineinfile:
+    path: /etc/ssh/sshd_config
+    regexp: '^#?PasswordAuthentication\s+'
+    line: 'PasswordAuthentication no'
+    validate: "sshd -t -f %s"
+  when: disable_password_ssh_login | bool
+  notify: Restart ssh
+
+- name: Disable direct root SSH password login
+  lineinfile:
+    path: /etc/ssh/sshd_config
+    regexp: '^#?PermitRootLogin\s+'
+    line: 'PermitRootLogin prohibit-password'
+    validate: "sshd -t -f %s"
+  when: disable_password_ssh_login | bool
+  notify: Restart ssh

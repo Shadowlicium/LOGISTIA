@@ -1,0 +1,4 @@
+---
+admin_ssh_public_key: ""
+disable_password_ssh_login: true
+machine_user: "{{ inventory_hostname }}"

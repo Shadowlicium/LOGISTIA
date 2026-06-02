@@ -99,12 +99,6 @@ variable "ssh_public_key" {
   default     = ""
 }
 
-variable "root_password" {
-  description = "Mot de passe root provisoire pour l'installation initiale"
-  type        = string
-  sensitive   = true
-}
-
 variable "vmid_start" {
   type    = number
   default = 100
