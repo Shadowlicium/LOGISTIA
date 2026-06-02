@@ -8,13 +8,15 @@
 
 - **VLAN 10 (DMZ)**
   - `web` (10.10.10.10): Apache web server
-  - `grafana` (10.10.10.11): Monitoring & dashboards
-  - `postfix` (10.10.10.12): Mail server (SMTP)
-  - `dovecot` (10.10.10.12): Mail delivery (IMAP/POP3/LMTP)
+  - `mail-relay` (10.10.10.12): relais SMTP avec analyse des mails
 
-- **VLAN 20 (Database & AI)**
+- **VLAN 20 (Data)**
   - `db` (10.10.20.10): PostgreSQL
-  - `ollama` (10.10.20.11): AI models & log analysis
+  - `mail-data` (10.10.20.12): serveur mail interne avec Postfix + Dovecot
+
+- **VLAN 40 (Supervision & IA)**
+  - `grafana` (10.10.40.10): Monitoring & dashboards
+  - `ollama` (10.10.40.11): AI models & log analysis
 
 - **VLAN 30 (CI/CD)**
   - `gh-runner` (10.10.30.10): GitHub Actions self-hosted runner
@@ -96,7 +98,7 @@ ansible-playbook -i ansible/inventory.ini ansible/playbooks/site.yml --ask-vault
 ```
 
 Cela va :
-- Installer et configurer Apache, PostgreSQL, Grafana, Postfix/Dovecot, Ollama, etc.
+- Installer et configurer Apache, PostgreSQL, Grafana, le relay mail, le serveur mail interne, Ollama, etc.
 - Créer les utilisateurs mail définis dans tes variables Ansible locales
 - Configurer les certificats SSL auto-signés
 - Démarrer tous les services
@@ -142,8 +144,9 @@ Voir [ansible/roles/runner/README.md](ansible/roles/runner/README.md) pour les d
         ├── web/                       # Apache web server
         ├── db/                        # PostgreSQL
         ├── grafana/                   # Grafana monitoring
-        ├── postfix/                   # Mail (SMTP)
-        ├── dovecot/                   # Mail (IMAP/POP3/LMTP)
+        ├── mail_relay/                # Relais SMTP DMZ avec analyse Rspamd
+        ├── postfix/                   # Postfix interne pour stockage mail
+        ├── dovecot/                   # Mail interne (IMAP/POP3/LMTP)
         ├── ollama/                    # AI models & log analysis
         ├── runner/                    # GitHub Actions runner
         └── backup/                    # Rsync backups
@@ -156,15 +159,21 @@ Voir [ansible/roles/runner/README.md](ansible/roles/runner/README.md) pour les d
 - Écoute sur `10.10.10.10:80`
 - Page d'accueil simple à personnaliser
 
-### Mail Server (Postfix + Dovecot)
+### Mail Relay & Mail Server
+
+Le mail est séparé en deux zones :
+
+- `mail-relay` en DMZ (`10.10.10.12`) reçoit le SMTP, analyse les messages avec Rspamd, puis relaie uniquement le domaine configuré vers le serveur interne.
+- `mail-data` en data (`10.10.20.12`) stocke les boîtes mail avec Postfix + Dovecot et accepte le SMTP depuis le relay DMZ.
 
 **Utilisateurs mail**:
 Les comptes sont définis dans `ansible/group_vars/mail.yml`, fichier local ignoré par Git et prévu pour être chiffré avec Ansible Vault.
 
-**Protocoles**:
-- SMTP: 25 (local) + 587 (soumission avec TLS)
-- IMAP: 993 (TLS)
-- POP3: 995 (TLS)
+**Flux réseau**:
+- SMTP entrant: `mail-relay:25`
+- Analyse: Rspamd via milter local sur le relay
+- Transfert interne: `mail-relay` -> `mail-data:25`
+- Accès utilisateurs: IMAP/POP3 TLS sur `mail-data`
 
 **Note**: Aucun mot de passe réel ne doit être commité. Le dépôt fournit seulement `ansible/group_vars/mail.yml.example`.
 
@@ -174,7 +183,7 @@ PostgreSQL est installé mais la base et les utilisateurs doivent être créés 
 
 ### Monitoring (Grafana)
 
-- Accès par défaut: `http://10.10.10.11:3000` (admin/admin)
+- Accès par défaut: `http://10.10.40.10:3000` (admin/admin)
 - À configurer avec des datasources (Prometheus, etc.)
 
 ### AI (Ollama)

@@ -34,9 +34,15 @@ variable "vlan_dmz" {
 }
 
 variable "vlan_db" {
-  description = "VLAN ID pour la base de données et Ollama"
+  description = "VLAN ID pour les services data"
   type        = number
   default     = 20
+}
+
+variable "vlan_security" {
+  description = "VLAN ID pour la supervision et les services IA"
+  type        = number
+  default     = 40
 }
 
 variable "vlan_runner" {
@@ -61,6 +67,12 @@ variable "gateway_db" {
   description = "Passerelle pour le VLAN DB"
   type        = string
   default     = "10.10.20.1"
+}
+
+variable "gateway_security" {
+  description = "Passerelle pour le VLAN supervision/IA"
+  type        = string
+  default     = "10.10.40.1"
 }
 
 variable "gateway_runner" {

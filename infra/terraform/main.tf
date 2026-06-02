@@ -32,6 +32,7 @@ module "vm_web" {
   root_password = var.root_password
   ssh_keys      = compact([var.ssh_public_key])
 }
+
 module "vm_db" {
   source        = "./modules/vm"
   name          = "db-postgres"
@@ -50,6 +51,24 @@ module "vm_db" {
   ssh_keys      = compact([var.ssh_public_key])
 }
 
+module "vm_mail_backend" {
+  source        = "./modules/vm"
+  name          = "mail-data"
+  target_node   = var.proxmox_node
+  vmid          = var.vmid_start + 22
+  cores         = 1
+  memory        = 1024
+  rootfs_size   = "10"
+  storage       = var.proxmox_storage
+  bridge        = var.proxmox_bridge
+  vlan          = var.vlan_db
+  ip            = "10.10.20.12/24"
+  gateway       = var.gateway_db
+  ostemplate    = var.proxmox_ostemplate
+  root_password = var.root_password
+  ssh_keys      = compact([var.ssh_public_key])
+}
+
 module "vm_grafana" {
   source        = "./modules/vm"
   name          = "grafana"
@@ -60,9 +79,9 @@ module "vm_grafana" {
   rootfs_size   = "8"
   storage       = var.proxmox_storage
   bridge        = var.proxmox_bridge
-  vlan          = var.vlan_dmz
-  ip            = "10.10.10.11/24"
-  gateway       = var.gateway_dmz
+  vlan          = var.vlan_security
+  ip            = "10.10.40.10/24"
+  gateway       = var.gateway_security
   ostemplate    = var.proxmox_ostemplate
   root_password = var.root_password
   ssh_keys      = compact([var.ssh_public_key])
@@ -70,7 +89,7 @@ module "vm_grafana" {
 
 module "vm_postfix" {
   source        = "./modules/vm"
-  name          = "postfix-mail"
+  name          = "mail-relay"
   target_node   = var.proxmox_node
   vmid          = var.vmid_start + 12
   cores         = 1
@@ -96,9 +115,9 @@ module "vm_ollama" {
   rootfs_size   = "16"
   storage       = var.proxmox_storage
   bridge        = var.proxmox_bridge
-  vlan          = var.vlan_db
-  ip            = "10.10.20.11/24"
-  gateway       = var.gateway_db
+  vlan          = var.vlan_security
+  ip            = "10.10.40.11/24"
+  gateway       = var.gateway_security
   ostemplate    = var.proxmox_ostemplate
   root_password = var.root_password
   ssh_keys      = compact([var.ssh_public_key])

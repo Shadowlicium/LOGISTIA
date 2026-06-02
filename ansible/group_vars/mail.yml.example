@@ -2,6 +2,12 @@
 # ansible-vault encrypt ansible/group_vars/mail.yml
 #
 # The real ansible/group_vars/mail.yml file is ignored by Git.
+mail_domain: mail.local
+mail_relay_ip: 10.10.10.12
+mail_backend_ip: 10.10.20.12
+mail_backend_hostname: mail-data
+mail_relay_hostname: mail-relay
+
 mail_users:
   - name: celia
     password: "replace-with-a-strong-password"

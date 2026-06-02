@@ -18,21 +18,39 @@
 - name: Ensure /etc/mailname contains the mail domain
   copy:
     dest: /etc/mailname
-    content: "mail.local\n"
+    content: "{{ mail_domain }}\n"
     owner: root
     group: root
     mode: '0644'
+
+- name: Ensure SSL private directory exists
+  file:
+    path: /etc/ssl/private
+    state: directory
+    owner: root
+    group: root
+    mode: '0700'
+
+- name: Create self-signed certificate for mail backend if absent
+  command: >
+    openssl req -new -x509 -days 365 -nodes -subj "/CN={{ mail_backend_hostname }}.{{ mail_domain }}"
+    -out /etc/ssl/certs/dovecot.pem -keyout /etc/ssl/private/dovecot.pem
+  args:
+    creates: /etc/ssl/certs/dovecot.pem
 
 - name: Deploy Postfix main.cf
   copy:
     dest: /etc/postfix/main.cf
     content: |
-      myhostname = {{ ansible_fqdn | default('mailserver') }}
+      myhostname = {{ mail_backend_hostname }}.{{ mail_domain }}
+      mydomain = {{ mail_domain }}
       myorigin = /etc/mailname
-      mydestination = $myhostname, localhost.$mydomain, localhost, mail.local
+      mydestination = $myhostname, localhost.$mydomain, localhost, $mydomain
       relayhost =
       inet_interfaces = all
       inet_protocols = ipv4
+      mynetworks = 127.0.0.0/8 {{ mail_relay_ip }}/32
+      disable_vrfy_command = yes
       mailbox_transport = lmtp:unix:private/dovecot-lmtp
       virtual_transport = lmtp:unix:private/dovecot-lmtp
       smtpd_tls_cert_file=/etc/ssl/certs/dovecot.pem
@@ -42,7 +60,9 @@
       smtpd_sasl_type = dovecot
       smtpd_sasl_path = private/auth
       smtpd_sasl_auth_enable = yes
-      smtpd_recipient_restrictions = permit_sasl_authenticated, permit_mynetworks, reject_unauth_destination
+      smtpd_client_restrictions = permit_mynetworks, reject
+      smtpd_recipient_restrictions = permit_mynetworks, permit_sasl_authenticated, reject_unauth_destination
+      smtpd_relay_restrictions = permit_mynetworks, permit_sasl_authenticated, reject_unauth_destination
     owner: root
     group: root
     mode: '0644'

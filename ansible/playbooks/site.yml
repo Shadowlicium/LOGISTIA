@@ -13,7 +13,12 @@
   roles:
     - grafana
 
-- hosts: mail
+- hosts: mail_relays
+  become: yes
+  roles:
+    - mail_relay
+
+- hosts: mailservers
   become: yes
   roles:
     - postfix

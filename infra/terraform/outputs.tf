@@ -13,9 +13,14 @@ output "grafana_vmid" {
   description = "VMID de Grafana"
 }
 
-output "postfix_vmid" {
+output "mail_relay_vmid" {
   value       = module.vm_postfix.vmid
-  description = "VMID du serveur mail (Postfix)"
+  description = "VMID du relais mail en DMZ"
+}
+
+output "mail_backend_vmid" {
+  value       = module.vm_mail_backend.vmid
+  description = "VMID du serveur mail interne"
 }
 
 output "ollama_vmid" {

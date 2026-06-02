@@ -1,0 +1,4 @@
+---
+mail_domain: mail.local
+mail_backend_ip: 10.10.20.12
+mail_relay_hostname: mail-relay

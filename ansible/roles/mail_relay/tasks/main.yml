@@ -1,0 +1,103 @@
+---
+- name: Update apt cache
+  apt:
+    update_cache: yes
+
+- name: Preseed Postfix configuration for relay
+  debconf:
+    name: postfix
+    question: postfix/main_mailer_type
+    value: 'Internet Site'
+    vtype: string
+
+- name: Install relay mail packages
+  apt:
+    name:
+      - postfix
+      - rspamd
+    state: present
+
+- name: Ensure /etc/mailname contains the mail domain
+  copy:
+    dest: /etc/mailname
+    content: "{{ mail_domain }}\n"
+    owner: root
+    group: root
+    mode: '0644'
+
+- name: Configure Rspamd mail analysis actions
+  copy:
+    dest: /etc/rspamd/local.d/actions.conf
+    content: |
+      reject = 15;
+      add_header = 6;
+      greylist = 4;
+    owner: root
+    group: root
+    mode: '0644'
+  notify: Restart rspamd
+
+- name: Configure transport to internal mail server
+  copy:
+    dest: /etc/postfix/transport
+    content: |
+      {{ mail_domain }} smtp:[{{ mail_backend_ip }}]
+    owner: root
+    group: root
+    mode: '0644'
+  notify:
+    - Postmap transport
+    - Restart postfix
+
+- name: Deploy relay Postfix configuration
+  copy:
+    dest: /etc/postfix/main.cf
+    content: |
+      myhostname = {{ mail_relay_hostname }}.{{ mail_domain }}
+      mydomain = {{ mail_domain }}
+      myorigin = /etc/mailname
+      mydestination =
+      relay_domains = {{ mail_domain }}
+      relayhost =
+      transport_maps = hash:/etc/postfix/transport
+      relay_recipient_maps =
+      inet_interfaces = all
+      inet_protocols = ipv4
+      disable_vrfy_command = yes
+      smtpd_helo_required = yes
+      smtpd_milters = inet:127.0.0.1:11332
+      non_smtpd_milters = $smtpd_milters
+      milter_default_action = tempfail
+      milter_protocol = 6
+      smtpd_recipient_restrictions = permit_mynetworks, reject_unauth_destination
+      smtpd_relay_restrictions = permit_mynetworks, reject_unauth_destination
+    owner: root
+    group: root
+    mode: '0644'
+  notify: Restart postfix
+
+- name: Ensure Rspamd is enabled and started
+  service:
+    name: rspamd
+    state: started
+    enabled: yes
+
+- name: Ensure Postfix relay is enabled and started
+  service:
+    name: postfix
+    state: started
+    enabled: yes
+
+handlers:
+  - name: Postmap transport
+    command: postmap /etc/postfix/transport
+
+  - name: Restart rspamd
+    service:
+      name: rspamd
+      state: restarted
+
+  - name: Restart postfix
+    service:
+      name: postfix
+      state: restarted

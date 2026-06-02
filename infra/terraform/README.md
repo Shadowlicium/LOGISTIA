@@ -32,10 +32,11 @@ terraform apply -auto-approve
 
 Les conteneurs sont créés avec des IP statiques par VLAN. Les adresses par défaut utilisées sont:
 - web: 10.10.10.10/24
-- grafana: 10.10.10.11/24
-- postfix: 10.10.10.12/24
+- mail-relay: 10.10.10.12/24
 - db: 10.10.20.10/24
-- ollama: 10.10.20.11/24
+- mail-data: 10.10.20.12/24
+- grafana: 10.10.40.10/24
+- ollama: 10.10.40.11/24
 - gh-runner: 10.10.30.10/24
 - backup: 10.10.99.10/24
 
