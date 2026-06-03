@@ -1,0 +1,5 @@
+user = {{ db_user }}
+password = {{ db_password }}
+hosts = {{ db_host }}
+dbname = {{ db_name }}
+query = SELECT destination FROM mail_aliases WHERE source = '%s' AND active = true

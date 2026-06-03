@@ -115,6 +115,39 @@ Pour `.github/workflows/deploy-with-self-hosted-runner.yml` :
 
 `SSH_PUBLIC_KEY` est injectée par Terraform. `ANSIBLE_SSH_PRIVATE_KEY` est la clé privée correspondante, utilisée par le runner pour SSH vers les conteneurs.
 
+`ANSIBLE_MAIL_VARS` doit contenir les variables mail sensibles au format YAML. Exemple à adapter avant de le coller dans le secret GitHub :
+
+```yaml
+mail_domain: mail.local
+mail_relay_ip: 10.10.10.12
+mail_backend_ip: 10.10.20.12
+mail_backend_hostname: mail-data
+mail_relay_hostname: mail-relay
+
+db_host: 10.10.20.10
+db_port: 5432
+db_name: mailserver
+db_user: mailuser
+db_password: "replace-with-a-strong-database-password"
+db_mail_allowed_cidr: 10.10.20.0/24
+
+mail_vhost_base: /var/vmail
+vmail_uid: 5000
+vmail_gid: 5000
+
+mail_users:
+  - email: celia@mail.local
+    password: "replace-with-a-strong-password"
+  - email: christopher@mail.local
+    password: "replace-with-a-strong-password"
+
+mail_aliases:
+  - source: postmaster@mail.local
+    destination: christopher@mail.local
+```
+
+Les mots de passe des utilisateurs mail sont hachés en SHA512-CRYPT dans PostgreSQL par Ansible. Le mot de passe PostgreSQL `db_password` reste uniquement dans les secrets GitHub.
+
 ### Déploiement depuis GitHub Actions
 
 Le workflow `Deploy with Self-Hosted Runner` se lance manuellement depuis l'onglet `Actions`.

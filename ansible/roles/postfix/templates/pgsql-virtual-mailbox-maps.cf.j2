@@ -1,0 +1,5 @@
+user = {{ db_user }}
+password = {{ db_password }}
+hosts = {{ db_host }}
+dbname = {{ db_name }}
+query = SELECT maildir FROM mail_users WHERE email = '%s' AND active = true

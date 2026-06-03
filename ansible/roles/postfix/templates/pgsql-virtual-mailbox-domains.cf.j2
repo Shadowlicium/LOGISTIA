@@ -1,0 +1,5 @@
+user = {{ db_user }}
+password = {{ db_password }}
+hosts = {{ db_host }}
+dbname = {{ db_name }}
+query = SELECT domain FROM mail_domains WHERE domain = '%s' AND active = true

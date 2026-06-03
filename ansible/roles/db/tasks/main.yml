@@ -1,8 +1,30 @@
 ---
-- name: Install PostgreSQL
+- name: Ensure PostgreSQL variables are provided
+  assert:
+    that:
+      - db_password is defined
+      - db_password | length > 0
+      - mail_users is defined
+      - mail_users | length > 0
+    fail_msg: "Define db_password and mail_users in ansible/group_vars/mail.yml or ANSIBLE_MAIL_VARS."
+
+- name: Ensure mail users have an address and password
+  assert:
+    that:
+      - item.password is defined
+      - item.password | length > 0
+      - item.email is defined or item.name is defined
+    fail_msg: "Each mail user must define email or name, and password."
+  loop: "{{ mail_users }}"
+  no_log: true
+
+- name: Install PostgreSQL packages
   apt:
-    name: postgresql
+    name:
+      - postgresql
+      - python3-psycopg2
     state: present
+    lock_timeout: 120
 
 - name: Ensure PostgreSQL is running
   service:
@@ -10,4 +32,122 @@
     state: started
     enabled: yes
 
-# TODO: créer base et users via postgresql_db/postgresql_user modules
+- name: Configure PostgreSQL listen address
+  lineinfile:
+    path: /etc/postgresql/16/main/postgresql.conf
+    regexp: "^#?listen_addresses\\s*="
+    line: "listen_addresses = 'localhost, {{ ansible_host }}'"
+  notify: Restart postgresql
+
+- name: Allow mail backend to connect to mail database
+  lineinfile:
+    path: /etc/postgresql/16/main/pg_hba.conf
+    line: "host    {{ db_name }}    {{ db_user }}    {{ db_mail_allowed_cidr }}    scram-sha-256"
+    state: present
+  notify: Restart postgresql
+
+- name: Flush PostgreSQL handlers before database tasks
+  meta: flush_handlers
+
+- name: Create mail database
+  become_user: postgres
+  community.postgresql.postgresql_db:
+    name: "{{ db_name }}"
+    state: present
+
+- name: Create mail database user
+  become_user: postgres
+  community.postgresql.postgresql_user:
+    name: "{{ db_user }}"
+    password: "{{ db_password }}"
+    db: "{{ db_name }}"
+    state: present
+  no_log: true
+
+- name: Create mail virtual account schema
+  become_user: postgres
+  community.postgresql.postgresql_query:
+    db: "{{ db_name }}"
+    query: |
+      CREATE TABLE IF NOT EXISTS mail_domains (
+        id SERIAL PRIMARY KEY,
+        domain TEXT NOT NULL UNIQUE,
+        active BOOLEAN NOT NULL DEFAULT true
+      );
+
+      CREATE TABLE IF NOT EXISTS mail_users (
+        id SERIAL PRIMARY KEY,
+        domain_id INTEGER NOT NULL REFERENCES mail_domains(id) ON DELETE CASCADE,
+        email TEXT NOT NULL UNIQUE,
+        password TEXT NOT NULL,
+        maildir TEXT NOT NULL,
+        active BOOLEAN NOT NULL DEFAULT true
+      );
+
+      CREATE TABLE IF NOT EXISTS mail_aliases (
+        id SERIAL PRIMARY KEY,
+        domain_id INTEGER NOT NULL REFERENCES mail_domains(id) ON DELETE CASCADE,
+        source TEXT NOT NULL UNIQUE,
+        destination TEXT NOT NULL,
+        active BOOLEAN NOT NULL DEFAULT true
+      );
+
+      GRANT CONNECT ON DATABASE {{ db_name }} TO {{ db_user }};
+      GRANT USAGE ON SCHEMA public TO {{ db_user }};
+      GRANT SELECT ON mail_domains, mail_users, mail_aliases TO {{ db_user }};
+
+- name: Insert mail domain
+  become_user: postgres
+  community.postgresql.postgresql_query:
+    db: "{{ db_name }}"
+    query: |
+      INSERT INTO mail_domains (domain)
+      VALUES (%(domain)s)
+      ON CONFLICT (domain) DO UPDATE SET active = true;
+    named_args:
+      domain: "{{ mail_domain }}"
+
+- name: Insert virtual mail users
+  become_user: postgres
+  community.postgresql.postgresql_query:
+    db: "{{ db_name }}"
+    query: |
+      INSERT INTO mail_users (domain_id, email, password, maildir)
+      VALUES (
+        (SELECT id FROM mail_domains WHERE domain = %(domain)s),
+        %(email)s,
+        %(password_hash)s,
+        %(maildir)s
+      )
+      ON CONFLICT (email) DO UPDATE SET
+        password = EXCLUDED.password,
+        maildir = EXCLUDED.maildir,
+        active = true;
+    named_args:
+      domain: "{{ mail_domain }}"
+      email: "{{ item.email if item.email is defined else item.name ~ '@' ~ mail_domain }}"
+      password_hash: "{{ item.password | password_hash('sha512', ((item.email if item.email is defined else item.name ~ '@' ~ mail_domain) | hash('sha1'))[:16]) }}"
+      maildir: "{{ item.maildir if item.maildir is defined else mail_domain ~ '/' ~ ((item.email if item.email is defined else item.name ~ '@' ~ mail_domain).split('@')[0]) ~ '/' }}"
+  loop: "{{ mail_users }}"
+  no_log: true
+
+- name: Insert virtual mail aliases
+  become_user: postgres
+  community.postgresql.postgresql_query:
+    db: "{{ db_name }}"
+    query: |
+      INSERT INTO mail_aliases (domain_id, source, destination)
+      VALUES (
+        (SELECT id FROM mail_domains WHERE domain = %(domain)s),
+        %(source)s,
+        %(destination)s
+      )
+      ON CONFLICT (source) DO UPDATE SET
+        destination = EXCLUDED.destination,
+        active = true;
+    named_args:
+      domain: "{{ mail_domain }}"
+      source: "{{ item.source }}"
+      destination: "{{ item.destination }}"
+  loop: "{{ mail_aliases | default([]) }}"
+  no_log: true

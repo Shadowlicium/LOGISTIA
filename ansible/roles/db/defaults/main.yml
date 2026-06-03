@@ -1,10 +1,9 @@
 ---
 mail_domain: mail.local
-mail_backend_hostname: mail-data
-mail_relay_ip: 10.10.10.12
+mail_backend_ip: 10.10.20.12
 db_host: 10.10.20.10
+db_port: 5432
 db_name: mailserver
 db_user: mailuser
+db_mail_allowed_cidr: 10.10.20.0/24
 mail_vhost_base: /var/vmail
-vmail_uid: 5000
-vmail_gid: 5000

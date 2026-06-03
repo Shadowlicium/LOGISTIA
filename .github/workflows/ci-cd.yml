@@ -30,9 +30,10 @@ jobs:
         run: |
           python3 -m pip install --upgrade pip
           python3 -m pip install ansible
+          ansible-galaxy collection install -r ansible/requirements.yml
 
       - name: Ansible syntax check
-        run: ansible-playbook -i inventory.ini --syntax-check playbooks/site.yml
+        run: ANSIBLE_ROLES_PATH=roles ansible-playbook -i inventory.ini --syntax-check playbooks/site.yml
         working-directory: ansible
 
   security-scan:

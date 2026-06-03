@@ -1,0 +1,5 @@
+driver = pgsql
+connect = host={{ db_host }} dbname={{ db_name }} user={{ db_user }} password={{ db_password }}
+default_pass_scheme = SHA512-CRYPT
+password_query = SELECT email AS user, password FROM mail_users WHERE email = '%u' AND active = true
+user_query = SELECT '{{ mail_vhost_base }}/' || maildir AS home, 'maildir:{{ mail_vhost_base }}/' || maildir AS mail, {{ vmail_uid }} AS uid, {{ vmail_gid }} AS gid FROM mail_users WHERE email = '%u' AND active = true

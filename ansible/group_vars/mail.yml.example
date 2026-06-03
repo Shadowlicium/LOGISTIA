@@ -8,12 +8,27 @@ mail_backend_ip: 10.10.20.12
 mail_backend_hostname: mail-data
 mail_relay_hostname: mail-relay
 
+db_host: 10.10.20.10
+db_port: 5432
+db_name: mailserver
+db_user: mailuser
+db_password: "replace-with-a-strong-database-password"
+db_mail_allowed_cidr: 10.10.20.0/24
+
+mail_vhost_base: /var/vmail
+vmail_uid: 5000
+vmail_gid: 5000
+
 mail_users:
-  - name: celia
+  - email: celia@mail.local
     password: "replace-with-a-strong-password"
-  - name: christopher
+  - email: christopher@mail.local
     password: "replace-with-a-strong-password"
-  - name: norada
+  - email: norada@mail.local
     password: "replace-with-a-strong-password"
-  - name: arthur
+  - email: arthur@mail.local
     password: "replace-with-a-strong-password"
+
+mail_aliases:
+  - source: postmaster@mail.local
+    destination: christopher@mail.local

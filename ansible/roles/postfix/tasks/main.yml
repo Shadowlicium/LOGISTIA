@@ -1,7 +1,18 @@
 ---
+- name: Ensure virtual mail database variables are provided
+  assert:
+    that:
+      - db_password is defined
+      - db_password | length > 0
+      - mail_users is defined
+      - mail_users | length > 0
+    fail_msg: "Define db_password and mail_users in ansible/group_vars/mail.yml or ANSIBLE_MAIL_VARS."
+
 - name: Update apt cache
   apt:
     update_cache: yes
+    cache_valid_time: 3600
+    lock_timeout: 120
 
 - name: Preseed Postfix configuration (Internet Site)
   debconf:
@@ -10,10 +21,15 @@
     value: 'Internet Site'
     vtype: string
 
-- name: Install Postfix
+- name: Install Postfix virtual mailbox packages
   apt:
-    name: postfix
+    name:
+      - postfix
+      - postfix-pgsql
+      - mailutils
+      - openssl
     state: present
+    lock_timeout: 120
 
 - name: Ensure /etc/mailname contains the mail domain
   copy:
@@ -38,23 +54,94 @@
   args:
     creates: /etc/ssl/certs/dovecot.pem
 
-- name: Deploy Postfix main.cf
+- name: Create vmail group
+  group:
+    name: vmail
+    gid: "{{ vmail_gid }}"
+    state: present
+
+- name: Create vmail user
+  user:
+    name: vmail
+    uid: "{{ vmail_uid }}"
+    group: vmail
+    home: "{{ mail_vhost_base }}"
+    shell: /usr/sbin/nologin
+    create_home: yes
+    system: yes
+    state: present
+
+- name: Ensure virtual mailbox domain directory exists
+  file:
+    path: "{{ mail_vhost_base }}/{{ mail_domain }}"
+    state: directory
+    owner: vmail
+    group: vmail
+    mode: '0750'
+
+- name: Ensure virtual mailbox directories exist
+  file:
+    path: "{{ mail_vhost_base }}/{{ item.maildir if item.maildir is defined else mail_domain ~ '/' ~ ((item.email if item.email is defined else item.name ~ '@' ~ mail_domain).split('@')[0]) ~ '/' }}"
+    state: directory
+    owner: vmail
+    group: vmail
+    mode: '0700'
+  loop: "{{ mail_users }}"
+
+- name: Ensure Maildir subdirectories exist
+  file:
+    path: "{{ mail_vhost_base }}/{{ item.0.maildir if item.0.maildir is defined else mail_domain ~ '/' ~ ((item.0.email if item.0.email is defined else item.0.name ~ '@' ~ mail_domain).split('@')[0]) ~ '/' }}{{ item.1 }}"
+    state: directory
+    owner: vmail
+    group: vmail
+    mode: '0700'
+  loop: "{{ mail_users | product(['new', 'cur', 'tmp']) | list }}"
+
+- name: Deploy PostgreSQL virtual mailbox domain map
+  template:
+    src: pgsql-virtual-mailbox-domains.cf.j2
+    dest: /etc/postfix/pgsql-virtual-mailbox-domains.cf
+    owner: root
+    group: postfix
+    mode: '0640'
+  notify: Restart postfix
+  no_log: true
+
+- name: Deploy PostgreSQL virtual mailbox map
+  template:
+    src: pgsql-virtual-mailbox-maps.cf.j2
+    dest: /etc/postfix/pgsql-virtual-mailbox-maps.cf
+    owner: root
+    group: postfix
+    mode: '0640'
+  notify: Restart postfix
+  no_log: true
+
+- name: Deploy PostgreSQL virtual alias map
+  template:
+    src: pgsql-virtual-aliases-maps.cf.j2
+    dest: /etc/postfix/pgsql-virtual-aliases-maps.cf
+    owner: root
+    group: postfix
+    mode: '0640'
+  notify: Restart postfix
+  no_log: true
+
+- name: Deploy Postfix main.cf for virtual mailboxes
   copy:
     dest: /etc/postfix/main.cf
     content: |
       myhostname = {{ mail_backend_hostname }}.{{ mail_domain }}
       mydomain = {{ mail_domain }}
       myorigin = /etc/mailname
-      mydestination = $myhostname, localhost.$mydomain, localhost, $mydomain
+      mydestination = localhost
       relayhost =
       inet_interfaces = all
       inet_protocols = ipv4
       mynetworks = 127.0.0.0/8 {{ mail_relay_ip }}/32
       disable_vrfy_command = yes
-      mailbox_transport = lmtp:unix:private/dovecot-lmtp
-      virtual_transport = lmtp:unix:private/dovecot-lmtp
-      smtpd_tls_cert_file=/etc/ssl/certs/dovecot.pem
-      smtpd_tls_key_file=/etc/ssl/private/dovecot.pem
+      smtpd_tls_cert_file = /etc/ssl/certs/dovecot.pem
+      smtpd_tls_key_file = /etc/ssl/private/dovecot.pem
       smtpd_tls_security_level = may
       smtpd_tls_auth_only = yes
       smtpd_sasl_type = dovecot
@@ -63,6 +150,17 @@
       smtpd_client_restrictions = permit_mynetworks, reject
       smtpd_recipient_restrictions = permit_mynetworks, permit_sasl_authenticated, reject_unauth_destination
       smtpd_relay_restrictions = permit_mynetworks, permit_sasl_authenticated, reject_unauth_destination
+      virtual_mailbox_base = {{ mail_vhost_base }}
+      virtual_mailbox_domains = pgsql:/etc/postfix/pgsql-virtual-mailbox-domains.cf
+      virtual_mailbox_maps = pgsql:/etc/postfix/pgsql-virtual-mailbox-maps.cf
+      virtual_alias_maps = pgsql:/etc/postfix/pgsql-virtual-aliases-maps.cf
+      virtual_transport = lmtp:unix:private/dovecot-lmtp
+      mailbox_transport = lmtp:unix:private/dovecot-lmtp
+      virtual_minimum_uid = 100
+      virtual_uid_maps = static:{{ vmail_uid }}
+      virtual_gid_maps = static:{{ vmail_gid }}
+      local_recipient_maps =
+      compatibility_level = 3.6
     owner: root
     group: root
     mode: '0644'

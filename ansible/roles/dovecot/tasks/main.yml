@@ -1,26 +1,44 @@
 ---
+- name: Ensure Dovecot SQL variables are provided
+  assert:
+    that:
+      - db_password is defined
+      - db_password | length > 0
+    fail_msg: "Define db_password in ansible/group_vars/mail.yml or ANSIBLE_MAIL_VARS."
+
 - name: Update apt cache
   apt:
     update_cache: yes
+    cache_valid_time: 3600
+    lock_timeout: 120
 
-- name: Install Dovecot packages
+- name: Install Dovecot SQL packages
   apt:
     name:
       - dovecot-core
       - dovecot-imapd
-      - dovecot-pop3d
       - dovecot-lmtpd
+      - dovecot-pgsql
+      - openssl
     state: present
-    update_cache: yes
+    lock_timeout: 120
 
-- name: Ensure mail users are provided from protected variables
-  assert:
-    that:
-      - mail_users is defined
-      - mail_users | length > 0
-      - mail_users | selectattr('name', 'defined') | list | length == mail_users | length
-      - mail_users | selectattr('password', 'defined') | list | length == mail_users | length
-    fail_msg: "Define mail_users in ansible/group_vars/mail.yml, preferably encrypted with ansible-vault."
+- name: Create vmail group
+  group:
+    name: vmail
+    gid: "{{ vmail_gid }}"
+    state: present
+
+- name: Create vmail user
+  user:
+    name: vmail
+    uid: "{{ vmail_uid }}"
+    group: vmail
+    home: "{{ mail_vhost_base }}"
+    shell: /usr/sbin/nologin
+    create_home: yes
+    system: yes
+    state: present
 
 - name: Ensure SSL directories exist
   file:
@@ -30,59 +48,50 @@
     group: root
     mode: '0700'
 
-- name: Create self-signed certificate for Dovecot (if absent)
+- name: Create self-signed certificate for Dovecot if absent
   command: >
-    openssl req -new -x509 -days 365 -nodes -subj "/CN={{ ansible_fqdn | default('mail.local') }}" \
+    openssl req -new -x509 -days 365 -nodes -subj "/CN={{ ansible_fqdn | default('mail.local') }}"
     -out /etc/ssl/certs/dovecot.pem -keyout /etc/ssl/private/dovecot.pem
   args:
     creates: /etc/ssl/certs/dovecot.pem
 
-- name: Create local mail users
-  user:
-    name: "{{ item.name }}"
-    comment: "Mail user {{ item.name }}"
-    shell: /bin/bash
-    create_home: yes
-    password: "{{ item.password | password_hash('sha512') }}"
-  loop: "{{ mail_users }}"
+- name: Deploy Dovecot SQL configuration
+  template:
+    src: dovecot-sql.conf.ext.j2
+    dest: /etc/dovecot/dovecot-sql.conf.ext
+    owner: root
+    group: dovecot
+    mode: '0640'
+  notify: Restart dovecot
   no_log: true
 
-- name: Ensure Maildir root directories exist for mail users
-  file:
-    path: "/home/{{ item.name }}/Maildir"
-    state: directory
-    owner: "{{ item.name }}"
-    group: "{{ item.name }}"
-    mode: '0700'
-  loop: "{{ mail_users }}"
-
-- name: Ensure Maildir subdirectories exist for mail users
-  file:
-    path: "/home/{{ item.0.name }}/Maildir/{{ item.1 }}"
-    state: directory
-    owner: "{{ item.0.name }}"
-    group: "{{ item.0.name }}"
-    mode: '0700'
-  loop: "{{ mail_users | product(['new', 'cur', 'tmp']) | list }}"
-
-- name: Deploy Dovecot config with LMTP socket for Postfix
+- name: Deploy Dovecot virtual mailbox configuration
   copy:
     dest: /etc/dovecot/dovecot.conf
     content: |
+      protocols = imap lmtp
+      listen = *
       disable_plaintext_auth = yes
-      mail_location = maildir:~/Maildir
-      protocols = imap pop3 lmtp
+      auth_mechanisms = plain login
+
       ssl = required
       ssl_cert = </etc/ssl/certs/dovecot.pem
       ssl_key = </etc/ssl/private/dovecot.pem
-      auth_mechanisms = plain login
+
+      mail_uid = {{ vmail_uid }}
+      mail_gid = {{ vmail_gid }}
+      first_valid_uid = {{ vmail_uid }}
+      last_valid_uid = {{ vmail_uid }}
+      mail_location = maildir:{{ mail_vhost_base }}/%d/%n
 
       passdb {
-        driver = pam
+        driver = sql
+        args = /etc/dovecot/dovecot-sql.conf.ext
       }
 
       userdb {
-        driver = passwd
+        driver = sql
+        args = /etc/dovecot/dovecot-sql.conf.ext
       }
 
       service auth {
@@ -99,6 +108,10 @@
           user = postfix
           group = postfix
         }
+      }
+
+      protocol lmtp {
+        postmaster_address = postmaster@{{ mail_domain }}
       }
     owner: root
     group: root

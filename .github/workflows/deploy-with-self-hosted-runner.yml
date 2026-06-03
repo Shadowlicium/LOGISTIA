@@ -95,6 +95,7 @@ jobs:
           python3 -m venv "$RUNNER_TEMP/ansible-venv"
           "$RUNNER_TEMP/ansible-venv/bin/python" -m pip install --upgrade pip
           "$RUNNER_TEMP/ansible-venv/bin/python" -m pip install ansible
+          "$RUNNER_TEMP/ansible-venv/bin/ansible-galaxy" collection install -r ansible/requirements.yml
 
       - name: Configure SSH key for Ansible
         if: ${{ inputs.run_ansible && inputs.terraform_action == 'apply' }}
@@ -123,5 +124,5 @@ jobs:
         if: ${{ inputs.run_ansible && inputs.terraform_action == 'apply' }}
         timeout-minutes: 45
         run: |
-          "$RUNNER_TEMP/ansible-venv/bin/ansible-playbook" -i inventory.ini playbooks/site.yml
+          ANSIBLE_ROLES_PATH=roles "$RUNNER_TEMP/ansible-venv/bin/ansible-playbook" -i inventory.ini playbooks/site.yml
         working-directory: ansible
