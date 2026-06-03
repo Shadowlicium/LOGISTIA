@@ -54,25 +54,25 @@ variable "vlan_backup" {
 variable "gateway_dmz" {
   description = "Passerelle pour le VLAN DMZ"
   type        = string
-  default     = "10.10.10.1"
+  default     = "10.10.10.254"
 }
 
 variable "gateway_db" {
   description = "Passerelle pour le VLAN DB"
   type        = string
-  default     = "10.10.20.1"
+  default     = "10.10.20.254"
 }
 
 variable "gateway_security" {
   description = "Passerelle pour le VLAN supervision/IA"
   type        = string
-  default     = "10.10.40.1"
+  default     = "10.10.40.254"
 }
 
 variable "gateway_backup" {
   description = "Passerelle pour le VLAN Backup"
   type        = string
-  default     = "10.10.99.1"
+  default     = "10.10.99.254"
 }
 
 variable "proxmox_ostemplate" {

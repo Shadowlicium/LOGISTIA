@@ -5,5 +5,10 @@ proxmox_node     = "proxmox"
 proxmox_storage  = "local-lvm"
 proxmox_bridge   = "vmbr0"
 
+gateway_dmz      = "10.10.10.254"
+gateway_db       = "10.10.20.254"
+gateway_security = "10.10.40.254"
+gateway_backup   = "10.10.99.254"
+
 # Use an SSH public key for administration.
 ssh_public_key = "ssh-ed25519 AAAA..."
