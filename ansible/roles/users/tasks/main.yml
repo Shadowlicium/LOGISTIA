@@ -6,11 +6,24 @@
       - admin_ssh_public_key | length > 0
     fail_msg: "Define admin_ssh_public_key in ansible/group_vars/all.yml or via GitHub Secrets."
 
+- name: Configure APT network timeouts
+  copy:
+    dest: /etc/apt/apt.conf.d/99logistia-timeouts
+    content: |
+      Acquire::Retries "2";
+      Acquire::http::Timeout "20";
+      Acquire::https::Timeout "20";
+      DPkg::Lock::Timeout "120";
+    owner: root
+    group: root
+    mode: '0644'
+
 - name: Ensure sudo is installed
   apt:
     name: sudo
     state: present
-    update_cache: yes
+    update_cache: no
+    lock_timeout: 120
 
 - name: Create machine administration user
   user:
