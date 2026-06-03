@@ -264,6 +264,21 @@ Lorsque les VLANs ne sont pas accessibles depuis le poste, l'acces passe par le 
     └── modules/vm/
 ```
 
+## Documentation par dossier
+
+| Dossier | Documentation |
+|---|---|
+| `.github/` | [automatisation GitHub Actions](.github/README.md) |
+| `.github/workflows/` | [details des workflows CI et deploiement](.github/workflows/README.md) |
+| `infra/` | [separation Terraform / Ansible](infra/README.md) |
+| `infra/terraform/` | [commandes Terraform et choix d'infrastructure](infra/terraform/README.md) |
+| `infra/terraform/modules/` | [principe des modules Terraform](infra/terraform/modules/README.md) |
+| `infra/terraform/modules/vm/` | [module de creation des conteneurs LXC](infra/terraform/modules/vm/README.md) |
+| `ansible/` | [fonctionnement general Ansible](ansible/README.md) |
+| `ansible/playbooks/` | [ordre d'execution du playbook](ansible/playbooks/README.md) |
+| `ansible/group_vars/` | [variables, secrets et exemples](ansible/group_vars/README.md) |
+| `ansible/roles/` | [roles applicatifs et choix techniques](ansible/roles/README.md) |
+
 ## Securite
 
 - Les fichiers `terraform.tfvars`, `terraform.tfstate`, `.terraform/` et les vrais fichiers `ansible/group_vars/*.yml` sont ignores par Git.
