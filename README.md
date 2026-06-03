@@ -1,60 +1,98 @@
 # LOGISTIA - Infrastructure Proxmox
 
-Infrastructure de fin d'année basée sur Proxmox, Terraform, Ansible et GitHub Actions.
+LOGISTIA est un projet d'infrastructure de fin d'annee base sur Proxmox, Terraform, Ansible et GitHub Actions.
 
-L'objectif est de déployer des conteneurs LXC séparés par VLAN, avec une DMZ, une zone data, une zone supervision/IA et une zone backup. Les secrets restent hors du dépôt.
+Le projet deploie des conteneurs LXC separes par VLAN afin de presenter une architecture lisible, securisee et maintenable. Terraform cree les machines sur Proxmox. Ansible installe et configure les services applicatifs. Les secrets restent hors du depot Git.
+
+## Objectif
+
+L'infrastructure met en place :
+
+- une DMZ pour le serveur web et le relais mail
+- une zone data pour PostgreSQL et le serveur mail interne
+- une zone supervision et IA pour Grafana et Ollama
+- une zone backup separee
+- un runner GitHub Actions interne, gere hors Terraform
+- une configuration SSH par cle, sans mot de passe root stocke dans le depot
+
+Le mail entrant arrive sur le relais en DMZ, passe par l'analyse Rspamd, puis est transmis au serveur mail interne dans le VLAN data.
 
 ## Architecture
 
 ### VLANs
 
-- **VLAN 10 - DMZ**
-  - `web` (`10.10.10.10`) : serveur Apache
-  - `mail-relay` (`10.10.10.12`) : relais SMTP avec analyse Rspamd
+| VLAN | Zone | Machines |
+|---|---|---|
+| 10 | DMZ | `web-apache` `10.10.10.10`, `mail-relay` `10.10.10.12` |
+| 20 | Data | `db-postgres` `10.10.20.10`, `mail-data` `10.10.20.12` |
+| 30 | Travail | runner GitHub self-hosted, installe manuellement |
+| 40 | Supervision / IA | `grafana` `10.10.40.10`, `ollama-ia` `10.10.40.11` |
+| 90 | Management | Proxmox et administration |
+| 99 | Backup | `backup` `10.10.99.10` |
 
-- **VLAN 20 - Data**
-  - `db` (`10.10.20.10`) : PostgreSQL
-  - `mail-data` (`10.10.20.12`) : serveur mail interne Postfix + Dovecot
+### Flux principaux
 
-- **VLAN 40 - Supervision & IA**
-  - `grafana` (`10.10.40.10`) : supervision
-  - `ollama` (`10.10.40.11`) : analyse de logs / IA
+- Internet vers DMZ selon les regles du firewall.
+- `mail-relay` vers `mail-data` en SMTP.
+- `mail-data` vers `db-postgres` pour les comptes mail virtuels.
+- runner GitHub vers Proxmox pour Terraform.
+- runner GitHub vers les conteneurs pour Ansible.
+- supervision et IA isolees dans le VLAN 40.
 
-- **VLAN 90 - Management**
-  - Proxmox et accès d'administration
+## Services
 
-- **VLAN 99 - Backup**
-  - `backup` (`10.10.99.10`) : sauvegardes rsync
+| Machine | Role |
+|---|---|
+| `web-apache` | Apache, point web interne |
+| `mail-relay` | Postfix relais SMTP, Rspamd |
+| `mail-data` | Postfix, Dovecot, boites mail virtuelles |
+| `db-postgres` | PostgreSQL, comptes et alias mail |
+| `grafana` | supervision |
+| `ollama-ia` | serveur IA / analyse |
+| `backup` | sauvegardes rsync |
 
-### Flux
+## Prerequis
 
-- Les conteneurs ne sont pas exposés directement à Internet.
-- Le firewall Debian route et filtre les VLANs.
-- Le GitHub runner doit être installé hors Terraform dans le réseau interne, par exemple en VLAN 30.
-- Ansible part du runner ou d'une machine d'administration ayant accès aux VLANs.
-- Le mail arrive sur `mail-relay` en DMZ, est analysé, puis est relayé en SMTP vers `mail-data` dans le VLAN 20.
+### Proxmox
 
-## Déploiement
+- un noeud Proxmox joignable depuis le runner ou le poste d'administration
+- un bridge VLAN-aware, par defaut `vmbr0`
+- le template LXC configure dans `infra/terraform/terraform.tfvars`
+- un utilisateur Proxmox dedie a Terraform
 
-### 1. Variables Terraform
+### Poste d'administration ou runner
+
+- Terraform
+- Ansible
+- acces reseau vers Proxmox et les VLANs prives
+- cle SSH privee correspondant a la cle publique injectee par Terraform
+
+## Methode 1 - Installation manuelle
+
+Cette methode lance Terraform et Ansible depuis un poste d'administration.
+
+### Variables Terraform
 
 ```bash
 cd infra/terraform
 cp terraform.tfvars.example terraform.tfvars
 ```
 
-Remplir `terraform.tfvars` avec les valeurs Proxmox et la clé SSH publique :
+Exemple de contenu :
 
 ```hcl
-proxmox_url      = "https://proxmox.example.local:8006/api2/json"
+proxmox_url      = "https://192.168.160.100:8006/api2/json"
 proxmox_user     = "terraform@pve"
 proxmox_password = "change-me"
+proxmox_node     = "proxmox"
+proxmox_storage  = "local-lvm"
+proxmox_bridge   = "vmbr0"
 ssh_public_key   = "ssh-ed25519 AAAA..."
 ```
 
-`terraform.tfvars` est ignoré par Git.
+`terraform.tfvars` est ignore par Git.
 
-### 2. Créer les conteneurs
+### Creation des conteneurs
 
 ```bash
 terraform init
@@ -62,9 +100,9 @@ terraform plan -out=plan.tfplan
 terraform apply plan.tfplan
 ```
 
-Terraform injecte uniquement une clé SSH publique dans les conteneurs. Aucun mot de passe root n'est stocké dans le dépôt.
+Terraform injecte uniquement une cle SSH publique dans les conteneurs. Aucun mot de passe root de conteneur n'est stocke dans le depot.
 
-### 3. Variables Ansible locales
+### Variables Ansible locales
 
 ```bash
 cd ../..
@@ -73,49 +111,70 @@ cp ansible/group_vars/mail.yml.example ansible/group_vars/mail.yml
 ansible-vault encrypt ansible/group_vars/mail.yml
 ```
 
-`all.yml` contient la clé publique utilisée pour créer les utilisateurs d'administration par machine. `mail.yml` contient les comptes mail et doit rester chiffré/local.
+`all.yml` contient la cle publique des comptes d'administration. `mail.yml` contient les variables sensibles mail et base de donnees.
 
-### 4. Exécuter Ansible
-
-Depuis une machine qui peut joindre les VLANs :
+### Execution Ansible
 
 ```bash
-ansible-playbook -i ansible/inventory.ini ansible/playbooks/site.yml --ask-vault-pass
+cd ansible
+ansible-galaxy collection install -r requirements.yml
+ansible-playbook -i inventory.ini playbooks/site.yml --ask-vault-pass
 ```
 
-Le playbook :
+Ansible cree les utilisateurs d'administration, installe les services et applique les configurations applicatives.
 
-- crée un utilisateur d'administration par machine (`web-apache`, `db-postgres`, `mail-data`, etc.)
-- installe Apache, PostgreSQL, Grafana, Postfix/Dovecot, Rspamd, Ollama et les services de backup
-- désactive l'authentification SSH par mot de passe
+## Methode 2 - Installation par GitHub Actions
 
-## GitHub Runner
+Cette methode utilise le workflow manuel `Deploy with Self-Hosted Runner`.
 
-Le runner GitHub Actions n'est pas créé par Terraform dans ce dépôt. Il doit être mis en place manuellement sur une machine interne capable d'accéder à Proxmox et aux VLANs privés, par exemple dans le VLAN 30.
+Le runner GitHub Actions n'est pas cree par Terraform. Il est installe manuellement sur une machine interne capable de joindre Proxmox et les VLANs prives, par exemple dans le VLAN 30.
 
-Installation recommandée :
+### Installation du runner
 
-1. Aller dans GitHub : `Settings` -> `Actions` -> `Runners` -> `New self-hosted runner`.
-2. Choisir Linux x64.
-3. Se connecter sur la machine choisie pour héberger le runner.
-4. Copier/coller les commandes affichées par GitHub.
+1. GitHub repository `Settings` -> `Actions` -> `Runners`.
+2. `New self-hosted runner`.
+3. Choix `Linux x64`.
+4. Execution des commandes affichees par GitHub sur la machine interne.
 
-Le dépôt ne maintient pas de script d'installation custom du runner : les commandes officielles GitHub sont la source fiable.
+Le depot ne fournit pas de script custom d'installation du runner. Les commandes officielles GitHub restent la reference.
 
-### Secrets GitHub nécessaires
+### Preparation du state Terraform
 
-Pour `.github/workflows/deploy-with-self-hosted-runner.yml` :
+Le workflow utilise par defaut :
 
-- `PROXMOX_URL`
-- `PROXMOX_USER`
-- `PROXMOX_PASSWORD`
-- `SSH_PUBLIC_KEY`
-- `ANSIBLE_SSH_PRIVATE_KEY`
-- `ANSIBLE_MAIL_VARS`
+```text
+/srv/logistia/terraform/terraform.tfstate
+```
 
-`SSH_PUBLIC_KEY` est injectée par Terraform. `ANSIBLE_SSH_PRIVATE_KEY` est la clé privée correspondante, utilisée par le runner pour SSH vers les conteneurs.
+Sur la machine du runner :
 
-`ANSIBLE_MAIL_VARS` doit contenir les variables mail sensibles au format YAML. Exemple à adapter avant de le coller dans le secret GitHub :
+```bash
+sudo mkdir -p /srv/logistia/terraform
+sudo chown -R git:git /srv/logistia
+```
+
+Si l'utilisateur du runner n'est pas `git`, le proprietaire du dossier correspond a cet utilisateur.
+
+Le chemin du state peut etre remplace par une variable GitHub Actions :
+
+```text
+TERRAFORM_STATE_PATH=/srv/logistia/terraform/terraform.tfstate
+```
+
+### Secrets GitHub Actions
+
+Les secrets sont configures dans `Settings` -> `Secrets and variables` -> `Actions`.
+
+| Secret | Description |
+|---|---|
+| `PROXMOX_URL` | URL Proxmox, ex. `https://192.168.160.100:8006/api2/json` |
+| `PROXMOX_USER` | utilisateur Proxmox utilise par Terraform |
+| `PROXMOX_PASSWORD` | mot de passe ou secret associe a l'utilisateur Proxmox |
+| `SSH_PUBLIC_KEY` | cle publique injectee dans les conteneurs |
+| `ANSIBLE_SSH_PRIVATE_KEY` | cle privee correspondant a `SSH_PUBLIC_KEY` |
+| `ANSIBLE_MAIL_VARS` | variables mail et PostgreSQL au format YAML |
+
+Exemple de valeur pour `ANSIBLE_MAIL_VARS` :
 
 ```yaml
 mail_domain: mail.local
@@ -146,38 +205,30 @@ mail_aliases:
     destination: christopher@mail.local
 ```
 
-Les mots de passe des utilisateurs mail sont hachés en SHA512-CRYPT dans PostgreSQL par Ansible. Le mot de passe PostgreSQL `db_password` reste uniquement dans les secrets GitHub.
+Les mots de passe mail sont haches en `SHA512-CRYPT` dans PostgreSQL par Ansible. `db_password` reste uniquement dans les secrets GitHub ou dans le fichier local chiffre.
 
-### Déploiement depuis GitHub Actions
+### Execution du workflow
 
-Le workflow `Deploy with Self-Hosted Runner` se lance manuellement depuis l'onglet `Actions`.
+Le workflow se lance depuis `Actions` -> `Deploy with Self-Hosted Runner` -> `Run workflow`.
 
-Il exécute, sur le runner interne :
+Options disponibles :
 
-1. `terraform init`
-2. `terraform plan`
-3. `terraform apply` si l'option `terraform_action` vaut `apply`
-4. Ansible si l'option `run_ansible` est activée
+| Option | Effet |
+|---|---|
+| `terraform_action = plan` | execute uniquement le plan Terraform |
+| `terraform_action = apply` | applique le plan Terraform |
+| `run_ansible = true` | lance Ansible apres Terraform |
+| `run_ansible = false` | limite l'execution a Terraform |
 
-Le state Terraform n'est pas stocké dans le dépôt. Par défaut, le workflow utilise :
+## Acces SSH
 
-```text
-/srv/logistia/terraform/terraform.tfstate
-```
-
-Sur un runner en conteneur, ce dossier doit être monté sur un volume persistant. Sinon, au redémarrage du conteneur, Terraform perdra son state et risque de vouloir recréer des ressources déjà existantes.
-
-Le chemin peut être changé avec une variable GitHub Actions nommée `TERRAFORM_STATE_PATH`.
-
-## Accès SSH
-
-Avant le premier passage Ansible, l'accès se fait en root avec la clé injectée par Terraform :
+Avant le passage Ansible, l'acces s'effectue avec `root` et la cle injectee par Terraform :
 
 ```bash
 ssh -i ~/.ssh/logistia_ed25519 root@10.10.10.10
 ```
 
-Après Ansible, utiliser les comptes d'administration par machine :
+Apres le passage Ansible, les comptes d'administration correspondent aux noms des machines :
 
 ```bash
 ssh -i ~/.ssh/logistia_ed25519 web-apache@10.10.10.10
@@ -189,9 +240,9 @@ ssh -i ~/.ssh/logistia_ed25519 ollama-ia@10.10.40.11
 ssh -i ~/.ssh/logistia_ed25519 backup@10.10.99.10
 ```
 
-Si les VLANs ne sont pas accessibles directement depuis le poste, passer par Proxmox ou par le réseau d'administration.
+Lorsque les VLANs ne sont pas accessibles depuis le poste, l'acces passe par le reseau d'administration, Proxmox ou une machine rebond autorisee.
 
-## Structure
+## Structure du depot
 
 ```text
 .
@@ -201,6 +252,7 @@ Si les VLANs ne sont pas accessibles directement depuis le poste, passer par Pro
 ├── ansible/
 │   ├── ansible.cfg
 │   ├── inventory.ini
+│   ├── requirements.yml
 │   ├── group_vars/
 │   ├── playbooks/site.yml
 │   └── roles/
@@ -212,10 +264,11 @@ Si les VLANs ne sont pas accessibles directement depuis le poste, passer par Pro
     └── modules/vm/
 ```
 
-## Sécurité
+## Securite
 
-- Les fichiers `terraform.tfvars`, `terraform.tfstate`, `.terraform/` et les vrais fichiers `group_vars/*.yml` sont ignorés par Git.
-- Les mots de passe mail doivent être stockés dans `ansible/group_vars/mail.yml`, idéalement chiffré avec Ansible Vault.
-- Les conteneurs ne sont pas exposés directement à Internet.
-- Le runner self-hosted doit être interne au réseau, mais il est géré hors Terraform.
-- Le state Terraform devrait idéalement être déplacé vers un backend distant chiffré.
+- Les fichiers `terraform.tfvars`, `terraform.tfstate`, `.terraform/` et les vrais fichiers `ansible/group_vars/*.yml` sont ignores par Git.
+- Les secrets GitHub Actions remplacent les fichiers locaux dans le workflow de deploiement.
+- Terraform injecte une cle SSH publique et ne stocke pas de mot de passe root de conteneur.
+- Le runner self-hosted reste interne au reseau et n'est pas cree par Terraform.
+- Le state Terraform est conserve hors depot, sur un chemin persistant du runner.
+- Les flux entre VLANs sont controles par le firewall/routeur de l'infrastructure.
