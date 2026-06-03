@@ -115,6 +115,27 @@ Pour `.github/workflows/deploy-with-self-hosted-runner.yml` :
 
 `SSH_PUBLIC_KEY` est injectée par Terraform. `ANSIBLE_SSH_PRIVATE_KEY` est la clé privée correspondante, utilisée par le runner pour SSH vers les conteneurs.
 
+### Déploiement depuis GitHub Actions
+
+Le workflow `Deploy with Self-Hosted Runner` se lance manuellement depuis l'onglet `Actions`.
+
+Il exécute, sur le runner interne :
+
+1. `terraform init`
+2. `terraform plan`
+3. `terraform apply` si l'option `terraform_action` vaut `apply`
+4. Ansible si l'option `run_ansible` est activée
+
+Le state Terraform n'est pas stocké dans le dépôt. Par défaut, le workflow utilise :
+
+```text
+/srv/logistia/terraform/terraform.tfstate
+```
+
+Sur un runner en conteneur, ce dossier doit être monté sur un volume persistant. Sinon, au redémarrage du conteneur, Terraform perdra son state et risque de vouloir recréer des ressources déjà existantes.
+
+Le chemin peut être changé avec une variable GitHub Actions nommée `TERRAFORM_STATE_PATH`.
+
 ## Accès SSH
 
 Avant le premier passage Ansible, l'accès se fait en root avec la clé injectée par Terraform :

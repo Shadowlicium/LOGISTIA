@@ -2,53 +2,96 @@ name: Deploy with Self-Hosted Runner
 
 on:
   workflow_dispatch:
+    inputs:
+      terraform_action:
+        description: "Terraform action to run"
+        required: true
+        default: "apply"
+        type: choice
+        options:
+          - plan
+          - apply
+      run_ansible:
+        description: "Run Ansible after Terraform"
+        required: true
+        default: true
+        type: boolean
+
+concurrency:
+  group: logistia-deploy
+  cancel-in-progress: false
 
 jobs:
-  terraform-apply:
+  deploy:
     runs-on: self-hosted
     env:
       TF_VAR_proxmox_url: ${{ secrets.PROXMOX_URL }}
       TF_VAR_proxmox_user: ${{ secrets.PROXMOX_USER }}
       TF_VAR_proxmox_password: ${{ secrets.PROXMOX_PASSWORD }}
       TF_VAR_ssh_public_key: ${{ secrets.SSH_PUBLIC_KEY }}
+      ANSIBLE_MAIL_VARS: ${{ secrets.ANSIBLE_MAIL_VARS }}
+      ANSIBLE_ADMIN_SSH_PUBLIC_KEY: ${{ secrets.SSH_PUBLIC_KEY }}
+      ANSIBLE_SSH_PRIVATE_KEY: ${{ secrets.ANSIBLE_SSH_PRIVATE_KEY }}
+      TERRAFORM_STATE_PATH: ${{ vars.TERRAFORM_STATE_PATH }}
     steps:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
+
+      - name: Check required secrets
+        run: |
+          test -n "$TF_VAR_proxmox_url"
+          test -n "$TF_VAR_proxmox_user"
+          test -n "$TF_VAR_proxmox_password"
+          test -n "$TF_VAR_ssh_public_key"
+
+      - name: Check required Ansible secrets
+        if: ${{ inputs.run_ansible && inputs.terraform_action == 'apply' }}
+        run: |
+          test -n "$ANSIBLE_SSH_PRIVATE_KEY"
+          test -n "$ANSIBLE_MAIL_VARS"
+
+      - name: Install runner packages
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ca-certificates curl openssh-client python3-venv unzip
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
 
+      - name: Prepare Terraform state path
+        run: |
+          state_path="${TERRAFORM_STATE_PATH:-/srv/logistia/terraform/terraform.tfstate}"
+          state_dir="$(dirname "$state_path")"
+          sudo mkdir -p "$state_dir"
+          sudo chown "$(id -u):$(id -g)" "$state_dir"
+          if [ -f "$state_path" ]; then
+            sudo chown "$(id -u):$(id -g)" "$state_path"
+          fi
+          echo "TF_STATE_PATH=$state_path" >> "$GITHUB_ENV"
+
       - name: Terraform init
-        run: terraform init -input=false
+        run: terraform init -input=false -backend-config="path=$TF_STATE_PATH"
         working-directory: infra/terraform
 
       - name: Terraform plan
-        run: terraform plan -out=plan.tfplan
+        run: terraform plan -input=false -out=plan.tfplan
         working-directory: infra/terraform
 
       - name: Terraform apply
+        if: ${{ inputs.terraform_action == 'apply' }}
         run: terraform apply -auto-approve plan.tfplan
         working-directory: infra/terraform
 
-  ansible-deploy:
-    runs-on: self-hosted
-    needs: terraform-apply
-    env:
-      ANSIBLE_MAIL_VARS: ${{ secrets.ANSIBLE_MAIL_VARS }}
-      ANSIBLE_ADMIN_SSH_PUBLIC_KEY: ${{ secrets.SSH_PUBLIC_KEY }}
-      ANSIBLE_SSH_PRIVATE_KEY: ${{ secrets.ANSIBLE_SSH_PRIVATE_KEY }}
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          persist-credentials: false
-
       - name: Install Ansible
+        if: ${{ inputs.run_ansible && inputs.terraform_action == 'apply' }}
         run: |
-          python3 -m pip install --upgrade pip
-          python3 -m pip install ansible
+          python3 -m venv .venv
+          .venv/bin/python -m pip install --upgrade pip
+          .venv/bin/python -m pip install ansible
 
       - name: Configure SSH key for Ansible
+        if: ${{ inputs.run_ansible && inputs.terraform_action == 'apply' }}
         run: |
           umask 077
           mkdir -p ~/.ssh
@@ -57,12 +100,19 @@ jobs:
           ssh-keygen -y -f ~/.ssh/id_ed25519 > ~/.ssh/id_ed25519.pub
 
       - name: Create local Ansible variables files
+        if: ${{ inputs.run_ansible && inputs.terraform_action == 'apply' }}
         run: |
           umask 077
           mkdir -p ansible/group_vars
           printf 'admin_ssh_public_key: >-\n  %s\ndisable_password_ssh_login: true\n' "$ANSIBLE_ADMIN_SSH_PUBLIC_KEY" > ansible/group_vars/all.yml
           printf '%s\n' "$ANSIBLE_MAIL_VARS" > ansible/group_vars/mail.yml
 
+      - name: Wait for SSH on containers
+        if: ${{ inputs.run_ansible && inputs.terraform_action == 'apply' }}
+        run: .venv/bin/ansible all -i inventory.ini -m wait_for_connection -a "timeout=300"
+        working-directory: ansible
+
       - name: Run Ansible playbook
-        run: ansible-playbook -i inventory.ini playbooks/site.yml
+        if: ${{ inputs.run_ansible && inputs.terraform_action == 'apply' }}
+        run: .venv/bin/ansible-playbook -i inventory.ini playbooks/site.yml
         working-directory: ansible
