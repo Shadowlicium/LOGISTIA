@@ -116,7 +116,7 @@ jobs:
       - name: Wait for SSH on containers
         if: ${{ inputs.run_ansible && inputs.terraform_action == 'apply' }}
         run: |
-          "$RUNNER_TEMP/ansible-venv/bin/ansible" all -i inventory.ini -m wait_for_connection -a "timeout=300"
+          "$RUNNER_TEMP/ansible-venv/bin/ansible" managed_containers -i inventory.ini -m wait_for_connection -a "timeout=300"
         working-directory: ansible
 
       - name: Run Ansible playbook
