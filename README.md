@@ -268,7 +268,7 @@ Lorsque les VLANs ne sont pas accessibles depuis le poste, l'acces passe par le 
 
 | Dossier | Documentation |
 |---|---|
-| `.github/` | [automatisation GitHub Actions](.github/README.md) |
+| `.github/` | [automatisation GitHub Actions](.github/ACTIONS.md) |
 | `.github/workflows/` | [details des workflows CI et deploiement](.github/workflows/README.md) |
 | `infra/` | [separation Terraform / Ansible](infra/README.md) |
 | `infra/terraform/` | [commandes Terraform et choix d'infrastructure](infra/terraform/README.md) |

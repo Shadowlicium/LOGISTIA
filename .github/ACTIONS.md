@@ -1,4 +1,4 @@
-# Dossier .github
+# Automatisation GitHub
 
 Ce dossier contient l'automatisation GitHub du projet.
 
