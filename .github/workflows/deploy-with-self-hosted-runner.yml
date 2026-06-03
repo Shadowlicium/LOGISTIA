@@ -92,9 +92,9 @@ jobs:
       - name: Install Ansible
         if: ${{ inputs.run_ansible && inputs.terraform_action == 'apply' }}
         run: |
-          python3 -m venv .venv
-          .venv/bin/python -m pip install --upgrade pip
-          .venv/bin/python -m pip install ansible
+          python3 -m venv "$RUNNER_TEMP/ansible-venv"
+          "$RUNNER_TEMP/ansible-venv/bin/python" -m pip install --upgrade pip
+          "$RUNNER_TEMP/ansible-venv/bin/python" -m pip install ansible
 
       - name: Configure SSH key for Ansible
         if: ${{ inputs.run_ansible && inputs.terraform_action == 'apply' }}
@@ -115,10 +115,12 @@ jobs:
 
       - name: Wait for SSH on containers
         if: ${{ inputs.run_ansible && inputs.terraform_action == 'apply' }}
-        run: .venv/bin/ansible all -i inventory.ini -m wait_for_connection -a "timeout=300"
+        run: |
+          "$RUNNER_TEMP/ansible-venv/bin/ansible" all -i inventory.ini -m wait_for_connection -a "timeout=300"
         working-directory: ansible
 
       - name: Run Ansible playbook
         if: ${{ inputs.run_ansible && inputs.terraform_action == 'apply' }}
-        run: .venv/bin/ansible-playbook -i inventory.ini playbooks/site.yml
+        run: |
+          "$RUNNER_TEMP/ansible-venv/bin/ansible-playbook" -i inventory.ini playbooks/site.yml
         working-directory: ansible
