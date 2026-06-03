@@ -108,8 +108,8 @@ module "vm_ollama" {
   target_node = var.proxmox_node
   vmid        = var.vmid_start + 41
   cores       = 2
-  memory      = 4096
-  rootfs_size = "16"
+  memory      = 6144
+  rootfs_size = "30"
   storage     = var.proxmox_storage
   bridge      = var.proxmox_bridge
   vlan        = var.vlan_security
