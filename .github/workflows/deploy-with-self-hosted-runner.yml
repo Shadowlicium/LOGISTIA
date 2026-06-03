@@ -51,10 +51,11 @@ jobs:
           test -n "$ANSIBLE_SSH_PRIVATE_KEY"
           test -n "$ANSIBLE_MAIL_VARS"
 
-      - name: Install runner packages
+      - name: Check runner prerequisites
         run: |
-          sudo apt-get update
-          sudo apt-get install -y ca-certificates curl openssh-client python3-venv unzip
+          command -v python3
+          python3 -m venv --help >/dev/null
+          command -v ssh-keygen
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
@@ -65,10 +66,13 @@ jobs:
         run: |
           state_path="${TERRAFORM_STATE_PATH:-/srv/logistia/terraform/terraform.tfstate}"
           state_dir="$(dirname "$state_path")"
-          sudo mkdir -p "$state_dir"
-          sudo chown "$(id -u):$(id -g)" "$state_dir"
-          if [ -f "$state_path" ]; then
-            sudo chown "$(id -u):$(id -g)" "$state_path"
+          if [ ! -d "$state_dir" ]; then
+            echo "::error::Create the persistent Terraform state directory first: $state_dir"
+            exit 1
+          fi
+          if [ ! -w "$state_dir" ]; then
+            echo "::error::The runner user must be able to write to: $state_dir"
+            exit 1
           fi
           echo "TF_STATE_PATH=$state_path" >> "$GITHUB_ENV"
 
