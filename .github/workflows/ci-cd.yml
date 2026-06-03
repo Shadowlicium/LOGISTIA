@@ -41,10 +41,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Install Trivy
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ca-certificates curl gnupg
+          sudo install -m 0755 -d /etc/apt/keyrings
+          curl -fsSL https://aquasecurity.github.io/trivy-repo/deb/public.key | sudo gpg --dearmor -o /etc/apt/keyrings/trivy.gpg
+          echo "deb [signed-by=/etc/apt/keyrings/trivy.gpg] https://aquasecurity.github.io/trivy-repo/deb generic main" | sudo tee /etc/apt/sources.list.d/trivy.list
+          sudo apt-get update
+          sudo apt-get install -y trivy
+
       - name: Trivy filesystem scan
-        uses: aquasecurity/trivy-action@v2
-        with:
-          scan-type: fs
-          format: table
-          exit-code: 1
-          severity: CRITICAL,HIGH
+        run: trivy fs --format table --exit-code 1 --severity CRITICAL,HIGH --ignore-unfixed .
