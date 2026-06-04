@@ -16,6 +16,7 @@ Un playbook principal evite de lancer manuellement chaque role. Il decrit l'ordr
 6. serveur mail interne
 7. IA
 8. backup
+9. hardening systeme commun
 
 ## Commande de verification
 
@@ -33,11 +34,11 @@ ansible-playbook -i inventory.ini playbooks/site.yml
 
 Cette commande se connecte aux machines et applique les roles.
 
-## Pourquoi `serial: 1` sur le role users
+## Pourquoi `serial: 1` sur users et hardening
 
-Le premier play applique le role `users` avec `serial: 1`. Les conteneurs sont donc traites un par un.
+Le role `users` et le role final `hardening` utilisent `serial: 1`. Les conteneurs sont donc traites un par un pour ces etapes sensibles.
 
-Ce choix rend le premier passage plus lisible et evite plusieurs installations APT simultanees au moment ou les machines viennent juste d'etre creees.
+Ce choix rend le premier passage plus lisible, evite plusieurs installations APT simultanees au moment ou les machines viennent juste d'etre creees, puis applique le durcissement final machine par machine.
 
 ## Pourquoi `become: yes`
 

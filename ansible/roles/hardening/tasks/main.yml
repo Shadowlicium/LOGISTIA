@@ -1,0 +1,100 @@
+---
+- name: Install hardening packages
+  apt:
+    name:
+      - fail2ban
+      - python3-systemd
+      - unattended-upgrades
+    state: present
+    update_cache: no
+    lock_timeout: 120
+
+- name: Configure extra SSH hardening options
+  blockinfile:
+    path: /etc/ssh/sshd_config
+    marker: "# {mark} LOGISTIA SSH HARDENING"
+    block: |
+      {% for option, value in hardening_sshd_extra_options.items() %}
+      {{ option }} {{ value }}
+      {% endfor %}
+    validate: "sshd -t -f %s"
+  when: hardening_manage_sshd_extra | bool
+  notify: Restart ssh
+
+- name: Configure fail2ban SSH jail
+  copy:
+    dest: /etc/fail2ban/jail.d/logistia-sshd.conf
+    content: |
+      [sshd]
+      enabled = true
+      port = ssh
+      filter = sshd
+      backend = systemd
+      bantime = {{ hardening_fail2ban_bantime }}
+      findtime = {{ hardening_fail2ban_findtime }}
+      maxretry = {{ hardening_fail2ban_maxretry }}
+    owner: root
+    group: root
+    mode: '0644'
+  when: hardening_enable_fail2ban | bool
+  notify: Restart fail2ban
+
+- name: Ensure fail2ban is enabled
+  service:
+    name: fail2ban
+    enabled: yes
+    state: started
+  when: hardening_enable_fail2ban | bool
+
+- name: Configure unattended upgrades
+  copy:
+    dest: /etc/apt/apt.conf.d/20auto-upgrades
+    content: |
+      APT::Periodic::Update-Package-Lists "1";
+      APT::Periodic::Unattended-Upgrade "1";
+      APT::Periodic::AutocleanInterval "7";
+    owner: root
+    group: root
+    mode: '0644'
+  when: hardening_enable_unattended_upgrades | bool
+
+- name: Ensure unattended upgrades service is enabled
+  service:
+    name: unattended-upgrades
+    enabled: yes
+    state: started
+  when: hardening_enable_unattended_upgrades | bool
+
+- name: Ensure journald configuration directory exists
+  file:
+    path: /etc/systemd/journald.conf.d
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+  when: hardening_manage_journald | bool
+
+- name: Configure persistent journald limits
+  copy:
+    dest: /etc/systemd/journald.conf.d/99-logistia-hardening.conf
+    content: |
+      [Journal]
+      Storage=persistent
+      SystemMaxUse=200M
+      RuntimeMaxUse=100M
+      MaxRetentionSec=30day
+    owner: root
+    group: root
+    mode: '0644'
+  when: hardening_manage_journald | bool
+  notify: Restart systemd-journald
+
+- name: Apply network sysctl hardening
+  sysctl:
+    name: "{{ item.key }}"
+    value: "{{ item.value }}"
+    state: present
+    reload: yes
+    ignoreerrors: yes
+  loop: "{{ hardening_sysctl_settings | dict2items }}"
+  when: hardening_manage_sysctl | bool

@@ -86,6 +86,7 @@ Le pipeline GitHub Actions genere temporairement les fichiers sensibles dans `gr
 Chaque role a une responsabilite :
 
 - `users` securise l'acces SSH et cree les comptes d'administration.
+- `hardening` applique le durcissement systeme commun.
 - `web` installe Apache.
 - `db` configure PostgreSQL pour les comptes mail virtuels.
 - `mail_relay` configure le relais Postfix en DMZ avec Rspamd.

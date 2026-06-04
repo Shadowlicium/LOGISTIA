@@ -15,6 +15,7 @@ Cela permet aussi de relire ou modifier un service sans toucher au reste de l'in
 | Role | Machine cible | Explication |
 |---|---|---|
 | `users` | tous les conteneurs geres | cree les comptes d'administration et durcit SSH |
+| `hardening` | tous les conteneurs geres | applique le durcissement systeme commun |
 | `web` | `web-apache` | installe Apache et une page simple |
 | `db` | `db-postgres` | installe PostgreSQL et cree les tables mail |
 | `mail_relay` | `mail-relay` | configure Postfix en relais DMZ avec Rspamd |
@@ -59,6 +60,18 @@ Les vraies valeurs sensibles viennent de `group_vars/mail.yml` ou des secrets Gi
 Les fichiers `.j2` sont des templates Jinja2. Ils permettent de generer une configuration avec les variables Ansible.
 
 Dans le role `postfix`, les templates PostgreSQL contiennent les parametres de connexion a la base mail. Ils sont deployes avec des permissions restrictives et marques `no_log` dans les taches pour eviter d'afficher les secrets dans les logs.
+
+## Choix hardening
+
+Le role `hardening` applique les mesures communes apres la creation des comptes d'administration :
+
+- fail2ban pour limiter les attaques SSH par essais repetes
+- unattended-upgrades pour appliquer les mises a jour de securite
+- options SSH supplementaires pour reduire les fonctions inutiles
+- limites journald pour garder des logs sans remplir les disques
+- reglages sysctl reseau compatibles avec les contraintes LXC
+
+Le firewall local n'est pas configure dans les conteneurs. Les flux sont controles par les VLANs, Proxmox et le routeur/firewall de l'infrastructure.
 
 ## Choix mail
 

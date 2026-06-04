@@ -1,0 +1,28 @@
+---
+hardening_enable_fail2ban: true
+hardening_enable_unattended_upgrades: true
+hardening_manage_sysctl: true
+hardening_manage_journald: true
+hardening_manage_sshd_extra: true
+
+hardening_fail2ban_bantime: 1h
+hardening_fail2ban_findtime: 10m
+hardening_fail2ban_maxretry: 5
+
+hardening_sshd_extra_options:
+  ChallengeResponseAuthentication: "no"
+  KbdInteractiveAuthentication: "no"
+  X11Forwarding: "no"
+  MaxAuthTries: "4"
+  ClientAliveInterval: "300"
+  ClientAliveCountMax: "2"
+
+hardening_sysctl_settings:
+  net.ipv4.conf.all.accept_redirects: "0"
+  net.ipv4.conf.default.accept_redirects: "0"
+  net.ipv4.conf.all.send_redirects: "0"
+  net.ipv4.conf.default.send_redirects: "0"
+  net.ipv4.conf.all.accept_source_route: "0"
+  net.ipv4.conf.default.accept_source_route: "0"
+  net.ipv4.tcp_syncookies: "1"
+  net.ipv4.icmp_echo_ignore_broadcasts: "1"

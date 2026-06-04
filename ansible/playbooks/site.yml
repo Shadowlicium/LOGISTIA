@@ -39,3 +39,9 @@
   become: yes
   roles:
     - backup
+
+- hosts: managed_containers
+  become: yes
+  serial: 1
+  roles:
+    - hardening
