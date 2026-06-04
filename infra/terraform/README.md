@@ -106,6 +106,21 @@ Le projet declare un backend local. En execution manuelle, Terraform utilise le 
 
 Ce choix evite de versionner le state tout en permettant au runner de retrouver l'infrastructure deja creee apres un redemarrage.
 
+## Reprise et rollback Terraform
+
+Terraform ne fait pas de rollback automatique si une execution echoue pendant `apply`.
+
+Le point important est de conserver le state. Ce fichier indique quelles ressources sont deja associees au code Terraform.
+
+En cas d'echec :
+
+1. ne pas supprimer `terraform.tfstate` ;
+2. corriger la cause de l'erreur ;
+3. relancer `terraform plan` pour verifier l'ecart restant ;
+4. relancer `terraform apply` si le plan correspond a l'etat attendu.
+
+Si une ressource existe dans Proxmox mais n'est pas presente dans le state, elle doit etre importee avec `terraform import` ou supprimee manuellement apres verification. La procedure complete de rollback du pipeline est documentee dans [.github/workflows/README.md](../../.github/workflows/README.md).
+
 ## Reseau
 
 Chaque conteneur recoit une IP statique et une passerelle. Le routage entre zones est assure par l'equipement reseau ou le routeur/firewall de l'infrastructure.

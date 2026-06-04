@@ -220,6 +220,8 @@ Options disponibles :
 | `run_ansible = true` | lance Ansible apres Terraform |
 | `run_ansible = false` | limite l'execution a Terraform |
 
+Le detail des jobs, des commandes executees et de la procedure de rollback est documente dans [.github/workflows/README.md](.github/workflows/README.md).
+
 ## Acces SSH
 
 Avant le passage Ansible, l'acces s'effectue avec `root` et la cle injectee par Terraform :
@@ -246,22 +248,27 @@ Lorsque les VLANs ne sont pas accessibles depuis le poste, l'acces passe par le 
 
 ```text
 .
-├── .github/workflows/
-│   ├── ci-cd.yml
-│   └── deploy-with-self-hosted-runner.yml
-├── ansible/
-│   ├── ansible.cfg
-│   ├── inventory.ini
-│   ├── requirements.yml
-│   ├── group_vars/
-│   ├── playbooks/site.yml
-│   └── roles/
-└── infra/terraform/
-    ├── main.tf
-    ├── variables.tf
-    ├── outputs.tf
-    ├── terraform.tfvars.example
-    └── modules/vm/
+|-- .github/
+|   |-- ACTIONS.md
+|   `-- workflows/
+|       |-- ci-cd.yml
+|       |-- deploy-with-self-hosted-runner.yml
+|       `-- README.md
+|-- ansible/
+|   |-- ansible.cfg
+|   |-- inventory.ini
+|   |-- requirements.yml
+|   |-- group_vars/
+|   |-- playbooks/
+|   `-- roles/
+`-- infra/
+    |-- README.md
+    `-- terraform/
+        |-- main.tf
+        |-- variables.tf
+        |-- outputs.tf
+        |-- terraform.tfvars.example
+        `-- modules/
 ```
 
 ## Documentation par dossier
