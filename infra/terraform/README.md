@@ -45,8 +45,18 @@ Exemple :
 proxmox_url      = "https://192.168.160.100:8006/api2/json"
 proxmox_user     = "terraform@pve"
 proxmox_password = "change-me"
+deploy_backup    = true
 ssh_public_key   = "ssh-ed25519 AAAA..."
 ```
+
+`deploy_backup` controle la creation du conteneur `backup`.
+
+| Valeur | Effet |
+|---|---|
+| `true` | cree le serveur backup dans le VLAN 99 |
+| `false` | ne cree pas le serveur backup |
+
+Si le serveur backup existe deja dans le state, passer `deploy_backup` a `false` prepare une suppression Terraform. Le workflow GitHub Actions bloque ce cas pour eviter une perte de sauvegardes.
 
 ## Commandes Terraform
 
@@ -120,6 +130,8 @@ En cas d'echec :
 4. relancer `terraform apply` si le plan correspond a l'etat attendu.
 
 Si une ressource existe dans Proxmox mais n'est pas presente dans le state, elle doit etre importee avec `terraform import` ou supprimee manuellement apres verification. La procedure complete de rollback du pipeline est documentee dans [.github/workflows/README.md](../../.github/workflows/README.md).
+
+Le module `vm_backup` utilise un bloc `moved` pour conserver le lien avec l'ancien state lorsque le backup est rendu optionnel. Cela evite que Terraform interprete le changement comme une suppression suivie d'une recreation.
 
 ## Reseau
 

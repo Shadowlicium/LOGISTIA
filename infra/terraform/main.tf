@@ -119,7 +119,13 @@ module "vm_ollama" {
   ssh_keys    = compact([var.ssh_public_key])
 }
 
+moved {
+  from = module.vm_backup
+  to   = module.vm_backup[0]
+}
+
 module "vm_backup" {
+  count       = var.deploy_backup ? 1 : 0
   source      = "./modules/vm"
   name        = "backup"
   target_node = var.proxmox_node

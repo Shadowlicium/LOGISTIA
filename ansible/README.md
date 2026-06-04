@@ -92,6 +92,8 @@ Chaque role a une responsabilite :
 - `mail_relay` configure le relais Postfix en DMZ avec Rspamd.
 - `postfix` configure le serveur mail interne.
 - `dovecot` configure l'acces IMAP et LMTP.
-- `grafana`, `ollama`, `backup` configurent les services de leur zone.
+- `backup` centralise les sauvegardes PostgreSQL et mail.
+- `backup_client` prepare la restauration prudente sur `db-postgres` et `mail-data`.
+- `grafana`, `ollama` configurent les services de leur zone.
 
 Cette separation rend les erreurs plus faciles a isoler et permet de relancer un role sans relire tout le projet.

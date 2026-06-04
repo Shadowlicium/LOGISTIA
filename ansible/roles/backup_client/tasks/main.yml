@@ -1,0 +1,136 @@
+---
+- name: Skip backup client role when backup is disabled
+  meta: end_host
+  when: not (backup_enabled | bool)
+
+- name: Read backup pull public key
+  slurp:
+    src: "{{ backup_ssh_key_path }}.pub"
+  delegate_to: "{{ backup_server_inventory_host }}"
+  run_once: true
+  register: backup_pull_public_key_raw
+
+- name: Authorize backup server pull key on source
+  authorized_key:
+    user: root
+    key: "{{ backup_pull_public_key_raw.content | b64decode }}"
+    key_options: 'from="{{ hostvars[backup_server_inventory_host].ansible_host | default(backup_server_inventory_host) }}"'
+    state: present
+
+- name: Ensure local restore directories exist
+  file:
+    path: "{{ item }}"
+    state: directory
+    owner: root
+    group: root
+    mode: '0700'
+  loop:
+    - /root/.ssh
+    - /var/lib/logistia-backup
+
+- name: Generate source restore SSH key
+  openssh_keypair:
+    path: "{{ backup_restore_ssh_key_path }}"
+    type: ed25519
+    owner: root
+    group: root
+    mode: '0600'
+    comment: "logistia-restore-{{ inventory_hostname }}"
+
+- name: Read source restore public key
+  slurp:
+    src: "{{ backup_restore_ssh_key_path }}.pub"
+  register: backup_restore_public_key_raw
+
+- name: Authorize source restore key on backup server
+  authorized_key:
+    user: root
+    key: "{{ backup_restore_public_key_raw.content | b64decode }}"
+    key_options: 'from="{{ ansible_host }}"'
+    state: present
+  delegate_to: "{{ backup_server_inventory_host }}"
+
+- name: Install rsync on mail server for restore
+  apt:
+    name: rsync
+    state: present
+    update_cache: no
+    lock_timeout: 120
+  when: inventory_hostname in groups['mailservers']
+
+- name: Deploy mail restore script
+  template:
+    src: restore-mail.sh.j2
+    dest: /usr/local/sbin/logistia-restore-mail.sh
+    owner: root
+    group: root
+    mode: '0750'
+  when: inventory_hostname in groups['mailservers']
+
+- name: Deploy PostgreSQL restore script
+  template:
+    src: restore-postgres.sh.j2
+    dest: /usr/local/sbin/logistia-restore-postgres.sh
+    owner: root
+    group: root
+    mode: '0750'
+  when: inventory_hostname in groups['databases']
+
+- name: Create mail restore systemd service
+  copy:
+    dest: /etc/systemd/system/logistia-restore-mail.service
+    content: |
+      [Unit]
+      Description=Restore LOGISTIA mail data from backup when local mail store is empty
+      Wants=network-online.target
+      After=network-online.target
+      Before=postfix.service dovecot.service
+
+      [Service]
+      Type=oneshot
+      ExecStart=/usr/local/sbin/logistia-restore-mail.sh
+      RemainAfterExit=yes
+
+      [Install]
+      WantedBy=multi-user.target
+    owner: root
+    group: root
+    mode: '0644'
+  when: inventory_hostname in groups['mailservers']
+  notify: Reload systemd
+
+- name: Create PostgreSQL restore systemd service
+  copy:
+    dest: /etc/systemd/system/logistia-restore-postgres.service
+    content: |
+      [Unit]
+      Description=Restore LOGISTIA PostgreSQL dump from backup when mail database is absent
+      Wants=network-online.target
+      After=network-online.target postgresql.service
+
+      [Service]
+      Type=oneshot
+      ExecStart=/usr/local/sbin/logistia-restore-postgres.sh
+      RemainAfterExit=yes
+
+      [Install]
+      WantedBy=multi-user.target
+    owner: root
+    group: root
+    mode: '0644'
+  when: inventory_hostname in groups['databases']
+  notify: Reload systemd
+
+- name: Enable or disable mail restore on boot
+  systemd:
+    name: logistia-restore-mail.service
+    enabled: "{{ backup_restore_on_boot | bool }}"
+    daemon_reload: yes
+  when: inventory_hostname in groups['mailservers']
+
+- name: Enable or disable PostgreSQL restore on boot
+  systemd:
+    name: logistia-restore-postgres.service
+    enabled: "{{ backup_restore_on_boot | bool }}"
+    daemon_reload: yes
+  when: inventory_hostname in groups['databases']

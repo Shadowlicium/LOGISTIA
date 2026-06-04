@@ -1,0 +1,26 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+BACKUP_ROOT="{{ backup_root }}"
+KEY="{{ backup_ssh_key_path }}"
+MAIL_HOST="{{ hostvars[backup_mail_inventory_host].ansible_host | default(backup_mail_inventory_host) }}"
+MAIL_PATH="{{ mail_vhost_base }}"
+SNAPSHOT_RETENTION_DAYS="{{ backup_snapshot_retention_days }}"
+STAMP="$(date +%Y%m%d-%H%M%S)"
+CURRENT_DIR="$BACKUP_ROOT/mail-data/current"
+SNAPSHOT_DIR="$BACKUP_ROOT/mail-data/snapshots/$STAMP"
+LOG_FILE="$BACKUP_ROOT/logs/mail-data.log"
+
+mkdir -p "$CURRENT_DIR" "$BACKUP_ROOT/mail-data/snapshots" "$BACKUP_ROOT/logs"
+
+{
+  echo "[$(date --iso-8601=seconds)] Starting mail backup from $MAIL_HOST:$MAIL_PATH"
+  rsync -a --delete --numeric-ids \
+    -e "ssh -i $KEY -o BatchMode=yes -o StrictHostKeyChecking=accept-new" \
+    root@"$MAIL_HOST":"$MAIL_PATH"/ "$CURRENT_DIR"/
+
+  mkdir -p "$SNAPSHOT_DIR"
+  rsync -a --delete --numeric-ids --link-dest="$CURRENT_DIR" "$CURRENT_DIR"/ "$SNAPSHOT_DIR"/
+  find "$BACKUP_ROOT/mail-data/snapshots" -mindepth 1 -maxdepth 1 -type d -mtime +"$SNAPSHOT_RETENTION_DAYS" -exec rm -rf {} +
+  echo "[$(date --iso-8601=seconds)] Mail backup completed: $SNAPSHOT_DIR"
+} >> "$LOG_FILE" 2>&1

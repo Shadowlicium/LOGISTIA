@@ -40,6 +40,11 @@
   roles:
     - backup
 
+- hosts: databases:mailservers
+  become: yes
+  roles:
+    - backup_client
+
 - hosts: managed_containers
   become: yes
   serial: 1

@@ -1,0 +1,10 @@
+---
+backup_enabled: true
+backup_root: /backup
+backup_ssh_key_path: /root/.ssh/logistia_backup_ed25519
+backup_restore_ssh_key_path: /root/.ssh/logistia_restore_ed25519
+backup_restore_on_boot: true
+backup_restore_force_file: /var/lib/logistia-backup/force-restore
+backup_server_inventory_host: backup
+backup_db_inventory_host: db
+backup_mail_inventory_host: mail-data

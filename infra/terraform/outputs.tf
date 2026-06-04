@@ -29,6 +29,6 @@ output "ollama_vmid" {
 }
 
 output "backup_vmid" {
-  value       = module.vm_backup.vmid
+  value       = try(module.vm_backup[0].vmid, null)
   description = "VMID du serveur de backup"
 }

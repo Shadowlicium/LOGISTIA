@@ -10,5 +10,10 @@ gateway_db       = "10.10.20.254"
 gateway_security = "10.10.40.254"
 gateway_backup   = "10.10.99.254"
 
+# true cree le conteneur backup.
+# false permet de deployer le reste de l'infrastructure sans serveur backup.
+# Ne pas passer a false sur une infrastructure ou le backup existe deja dans le state sans verifier le plan.
+deploy_backup = true
+
 # Use an SSH public key for administration.
 ssh_public_key = "ssh-ed25519 AAAA..."

@@ -16,6 +16,11 @@ on:
         required: true
         default: true
         type: boolean
+      deploy_backup:
+        description: "Create and configure the backup server"
+        required: true
+        default: true
+        type: boolean
 
 concurrency:
   group: logistia-deploy
@@ -29,9 +34,11 @@ jobs:
       TF_VAR_proxmox_user: ${{ secrets.PROXMOX_USER }}
       TF_VAR_proxmox_password: ${{ secrets.PROXMOX_PASSWORD }}
       TF_VAR_ssh_public_key: ${{ secrets.SSH_PUBLIC_KEY }}
+      TF_VAR_deploy_backup: ${{ inputs.deploy_backup }}
       ANSIBLE_MAIL_VARS: ${{ secrets.ANSIBLE_MAIL_VARS }}
       ANSIBLE_ADMIN_SSH_PUBLIC_KEY: ${{ secrets.SSH_PUBLIC_KEY }}
       ANSIBLE_SSH_PRIVATE_KEY: ${{ secrets.ANSIBLE_SSH_PRIVATE_KEY }}
+      ANSIBLE_DEPLOY_BACKUP: ${{ inputs.deploy_backup }}
       TERRAFORM_STATE_PATH: ${{ vars.TERRAFORM_STATE_PATH }}
     steps:
       - uses: actions/checkout@v4
@@ -80,6 +87,16 @@ jobs:
         run: terraform init -input=false -backend-config="path=$TF_STATE_PATH"
         working-directory: infra/terraform
 
+      - name: Protect existing backup state
+        run: |
+          if [ "$TF_VAR_deploy_backup" != "true" ]; then
+            if terraform state list 2>/dev/null | grep -Eq '^module\.vm_backup($|\[)'; then
+              echo "::error::deploy_backup=false would remove the backup server from Terraform. Keep deploy_backup=true or move/import the backup state before disabling it."
+              exit 1
+            fi
+          fi
+        working-directory: infra/terraform
+
       - name: Terraform plan
         run: terraform plan -input=false -out=plan.tfplan
         working-directory: infra/terraform
@@ -111,18 +128,26 @@ jobs:
         run: |
           umask 077
           mkdir -p ansible/group_vars
-          printf 'admin_ssh_public_key: >-\n  %s\ndisable_password_ssh_login: true\n' "$ANSIBLE_ADMIN_SSH_PUBLIC_KEY" > ansible/group_vars/all.yml
+          printf 'admin_ssh_public_key: >-\n  %s\ndisable_password_ssh_login: true\nbackup_enabled: %s\n' "$ANSIBLE_ADMIN_SSH_PUBLIC_KEY" "$ANSIBLE_DEPLOY_BACKUP" > ansible/group_vars/all.yml
           printf '%s\n' "$ANSIBLE_MAIL_VARS" > ansible/group_vars/mail.yml
 
       - name: Wait for SSH on containers
         if: ${{ inputs.run_ansible && inputs.terraform_action == 'apply' }}
         run: |
-          "$RUNNER_TEMP/ansible-venv/bin/ansible" managed_containers -i inventory.ini -m wait_for_connection -a "timeout=300"
+          target="managed_containers"
+          if [ "$ANSIBLE_DEPLOY_BACKUP" != "true" ]; then
+            target="managed_containers:!backups"
+          fi
+          "$RUNNER_TEMP/ansible-venv/bin/ansible" "$target" -i inventory.ini -m wait_for_connection -a "timeout=300"
         working-directory: ansible
 
       - name: Run Ansible playbook
         if: ${{ inputs.run_ansible && inputs.terraform_action == 'apply' }}
         timeout-minutes: 45
         run: |
-          ANSIBLE_ROLES_PATH=roles "$RUNNER_TEMP/ansible-venv/bin/ansible-playbook" -i inventory.ini playbooks/site.yml
+          limit_args=()
+          if [ "$ANSIBLE_DEPLOY_BACKUP" != "true" ]; then
+            limit_args=(--limit "all:!backups")
+          fi
+          ANSIBLE_ROLES_PATH=roles "$RUNNER_TEMP/ansible-venv/bin/ansible-playbook" -i inventory.ini playbooks/site.yml "${limit_args[@]}"
         working-directory: ansible

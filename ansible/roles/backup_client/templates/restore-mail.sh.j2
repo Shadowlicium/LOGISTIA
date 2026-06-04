@@ -1,0 +1,28 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+BACKUP_HOST="{{ hostvars[backup_server_inventory_host].ansible_host | default(backup_server_inventory_host) }}"
+BACKUP_ROOT="{{ backup_root }}"
+KEY="{{ backup_restore_ssh_key_path }}"
+MAIL_PATH="{{ mail_vhost_base }}"
+FORCE_FILE="{{ backup_restore_force_file }}"
+LOG_FILE="/var/log/logistia-restore-mail.log"
+
+mkdir -p "$MAIL_PATH"
+
+{
+  echo "[$(date --iso-8601=seconds)] Checking mail restore from backup"
+
+  if [ ! -f "$FORCE_FILE" ] && find "$MAIL_PATH" -mindepth 1 -print -quit | grep -q .; then
+    echo "Local mail store is not empty, restore skipped"
+    exit 0
+  fi
+
+  rsync -a --delete --numeric-ids \
+    -e "ssh -i $KEY -o BatchMode=yes -o StrictHostKeyChecking=accept-new" \
+    root@"$BACKUP_HOST":"$BACKUP_ROOT/mail-data/current"/ "$MAIL_PATH"/
+
+  chown -R {{ vmail_uid }}:{{ vmail_gid }} "$MAIL_PATH"
+  rm -f "$FORCE_FILE"
+  echo "Mail restore completed"
+} >> "$LOG_FILE" 2>&1

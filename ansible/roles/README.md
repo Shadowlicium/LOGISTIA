@@ -23,7 +23,8 @@ Cela permet aussi de relire ou modifier un service sans toucher au reste de l'in
 | `dovecot` | `mail-data` | configure IMAP et LMTP avec PostgreSQL |
 | `grafana` | `grafana` | installe le service de supervision |
 | `ollama` | `ollama-ia` | installe le service IA et l'analyse de logs |
-| `backup` | `backup` | prepare les sauvegardes rsync |
+| `backup` | `backup` | centralise les sauvegardes PostgreSQL et mail |
+| `backup_client` | `db-postgres`, `mail-data` | autorise la collecte et prepare la restauration prudente |
 
 ## Taches
 
@@ -72,6 +73,19 @@ Le role `hardening` applique les mesures communes apres la creation des comptes 
 - reglages sysctl reseau compatibles avec les contraintes LXC
 
 Le firewall local n'est pas configure dans les conteneurs. Les flux sont controles par les VLANs, Proxmox et le routeur/firewall de l'infrastructure.
+
+## Choix backup
+
+Le serveur `backup` tire les donnees depuis les machines sources plutot que d'attendre que les sources poussent leurs donnees.
+
+Ce choix garde les sauvegardes au meme endroit et permet de planifier la collecte depuis le VLAN backup :
+
+- `db-postgres` est sauvegarde avec `pg_dumpall` via SSH ;
+- `mail-data` est sauvegarde avec `rsync` depuis `/var/vmail` ;
+- un timer systemd lance la sauvegarde regulierement ;
+- `backup_client` installe une restauration au demarrage sur DB et mail.
+
+La restauration automatique reste prudente : elle ne s'applique que si les donnees locales semblent absentes, sauf si le fichier `backup_restore_force_file` est cree manuellement sur la machine source.
 
 ## Choix mail
 

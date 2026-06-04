@@ -1,26 +1,108 @@
 ---
-- name: Install rsync and cron
+- name: Skip backup role when backup is disabled
+  meta: end_host
+  when: not (backup_enabled | bool)
+
+- name: Ensure backup packages are installed
   apt:
-    name: ["rsync","cron"]
+    name:
+      - rsync
+      - openssh-client
+      - postgresql-client
     state: present
+    update_cache: no
+    lock_timeout: 120
 
-- name: Create backup script
-  copy:
-    dest: /usr/local/bin/run-backup.sh
-    content: |
-      #!/bin/bash
-      rsync -av --delete /var/www/ /backup/www/
-    mode: '0755'
-
-- name: Ensure /backup exists
+- name: Ensure backup directories exist
   file:
-    path: /backup
+    path: "{{ item }}"
     state: directory
-    mode: '0755'
+    owner: root
+    group: root
+    mode: '0750'
+  loop:
+    - "{{ backup_root }}"
+    - "{{ backup_root }}/postgres"
+    - "{{ backup_root }}/postgres/dumps"
+    - "{{ backup_root }}/mail-data"
+    - "{{ backup_root }}/mail-data/current"
+    - "{{ backup_root }}/mail-data/snapshots"
+    - "{{ backup_root }}/logs"
 
-- name: Add cron job for daily backup
-  cron:
-    name: "daily backup"
-    minute: 0
-    hour: 2
-    job: "/usr/local/bin/run-backup.sh"
+- name: Ensure root SSH directory exists
+  file:
+    path: /root/.ssh
+    state: directory
+    owner: root
+    group: root
+    mode: '0700'
+
+- name: Generate backup pull SSH key
+  openssh_keypair:
+    path: "{{ backup_ssh_key_path }}"
+    type: ed25519
+    owner: root
+    group: root
+    mode: '0600'
+    comment: logistia-backup-pull
+
+- name: Deploy PostgreSQL backup script
+  template:
+    src: backup-postgres.sh.j2
+    dest: /usr/local/sbin/logistia-backup-postgres.sh
+    owner: root
+    group: root
+    mode: '0750'
+
+- name: Deploy mail backup script
+  template:
+    src: backup-mail.sh.j2
+    dest: /usr/local/sbin/logistia-backup-mail.sh
+    owner: root
+    group: root
+    mode: '0750'
+
+- name: Deploy global backup script
+  copy:
+    dest: /usr/local/sbin/logistia-backup-all.sh
+    content: |
+      #!/usr/bin/env bash
+      set -euo pipefail
+      /usr/local/sbin/logistia-backup-postgres.sh
+      /usr/local/sbin/logistia-backup-mail.sh
+    owner: root
+    group: root
+    mode: '0750'
+
+- name: Create backup systemd service
+  copy:
+    dest: /etc/systemd/system/logistia-backup.service
+    content: |
+      [Unit]
+      Description=LOGISTIA centralized backup
+      Wants=network-online.target
+      After=network-online.target
+
+      [Service]
+      Type=oneshot
+      ExecStart=/usr/local/sbin/logistia-backup-all.sh
+    owner: root
+    group: root
+    mode: '0644'
+  notify: Reload systemd
+
+- name: Create backup systemd timer
+  template:
+    src: backup.timer.j2
+    dest: /etc/systemd/system/logistia-backup.timer
+    owner: root
+    group: root
+    mode: '0644'
+  notify: Reload systemd
+
+- name: Enable and start backup timer
+  systemd:
+    name: logistia-backup.timer
+    enabled: yes
+    state: started
+    daemon_reload: yes

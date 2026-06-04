@@ -3,3 +3,11 @@
 # It must match the private key used by your local Ansible machine or GitHub runner.
 admin_ssh_public_key: "ssh-ed25519 AAAA..."
 disable_password_ssh_login: true
+
+# Set to false only when the backup server is not deployed.
+backup_enabled: true
+
+# Restore services run at boot but only restore when local data is empty,
+# unless backup_restore_force_file exists on the source machine.
+backup_restore_on_boot: true
+backup_restore_force_file: /var/lib/logistia-backup/force-restore

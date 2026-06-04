@@ -1,0 +1,11 @@
+[Unit]
+Description=Run LOGISTIA centralized backup periodically
+
+[Timer]
+OnBootSec=10min
+OnCalendar={{ backup_timer_on_calendar }}
+Persistent=true
+Unit=logistia-backup.service
+
+[Install]
+WantedBy=timers.target

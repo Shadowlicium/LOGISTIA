@@ -15,8 +15,9 @@ Un playbook principal evite de lancer manuellement chaque role. Il decrit l'ordr
 5. relais mail
 6. serveur mail interne
 7. IA
-8. backup
-9. hardening systeme commun
+8. backup centralise
+9. client de restauration backup sur DB et mail
+10. hardening systeme commun
 
 ## Commande de verification
 
@@ -39,6 +40,14 @@ Cette commande se connecte aux machines et applique les roles.
 Le role `users` et le role final `hardening` utilisent `serial: 1`. Les conteneurs sont donc traites un par un pour ces etapes sensibles.
 
 Ce choix rend le premier passage plus lisible, evite plusieurs installations APT simultanees au moment ou les machines viennent juste d'etre creees, puis applique le durcissement final machine par machine.
+
+## Pourquoi backup est applique avant backup_client
+
+Le role `backup` prepare le serveur central, cree sa cle SSH de collecte et installe les timers.
+
+Le role `backup_client` passe ensuite sur `db-postgres` et `mail-data`. Il autorise la cle du serveur backup a lire les donnees, puis cree les scripts de restauration prudente au demarrage.
+
+Cet ordre evite de configurer des clients qui pointeraient vers un serveur backup pas encore initialise.
 
 ## Pourquoi `become: yes`
 

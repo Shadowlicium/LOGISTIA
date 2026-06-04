@@ -11,7 +11,7 @@ L'infrastructure met en place :
 - une DMZ pour le serveur web et le relais mail
 - une zone data pour PostgreSQL et le serveur mail interne
 - une zone supervision et IA pour Grafana et Ollama
-- une zone backup separee
+- une zone backup separee, optionnelle au deploiement
 - un runner GitHub Actions interne, gere hors Terraform
 - une configuration SSH par cle, sans mot de passe root stocke dans le depot
 
@@ -37,6 +37,8 @@ Le mail entrant arrive sur le relais en DMZ, passe par l'analyse Rspamd, puis es
 - `mail-data` vers `db-postgres` pour les comptes mail virtuels.
 - runner GitHub vers Proxmox pour Terraform.
 - runner GitHub vers les conteneurs pour Ansible.
+- `backup` vers `db-postgres` et `mail-data` pour collecter les sauvegardes.
+- `db-postgres` et `mail-data` vers `backup` pour restaurer les donnees si le stockage local est vide.
 - supervision et IA isolees dans le VLAN 40.
 
 ## Services
@@ -49,7 +51,7 @@ Le mail entrant arrive sur le relais en DMZ, passe par l'analyse Rspamd, puis es
 | `db-postgres` | PostgreSQL, comptes et alias mail |
 | `grafana` | supervision |
 | `ollama-ia` | serveur IA / analyse |
-| `backup` | sauvegardes rsync |
+| `backup` | sauvegardes PostgreSQL et mails |
 
 ## Prerequis
 
@@ -87,10 +89,13 @@ proxmox_password = "change-me"
 proxmox_node     = "proxmox"
 proxmox_storage  = "local-lvm"
 proxmox_bridge   = "vmbr0"
+deploy_backup    = true
 ssh_public_key   = "ssh-ed25519 AAAA..."
 ```
 
 `terraform.tfvars` est ignore par Git.
+
+`deploy_backup = false` permet de creer l'infrastructure sans le conteneur backup. Cette option est utile pour un deploiement de test ou pour eviter de toucher a un serveur backup existant. Sur une infrastructure deja creee avec backup, un plan Terraform doit toujours etre relu avant de passer cette variable a `false`.
 
 ### Creation des conteneurs
 
@@ -219,8 +224,12 @@ Options disponibles :
 | `terraform_action = apply` | applique le plan Terraform |
 | `run_ansible = true` | lance Ansible apres Terraform |
 | `run_ansible = false` | limite l'execution a Terraform |
+| `deploy_backup = true` | cree et configure le serveur backup |
+| `deploy_backup = false` | exclut le serveur backup du deploiement |
 
 Le detail des jobs, des commandes executees et de la procedure de rollback est documente dans [.github/workflows/README.md](.github/workflows/README.md).
+
+Le workflow bloque `deploy_backup = false` si un serveur backup est deja present dans le state Terraform. Ce garde-fou evite de planifier accidentellement la suppression du conteneur qui contient les sauvegardes.
 
 ## Acces SSH
 

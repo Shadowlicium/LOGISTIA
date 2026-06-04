@@ -51,6 +51,12 @@ variable "vlan_backup" {
   default     = 99
 }
 
+variable "deploy_backup" {
+  description = "Cree le serveur de backup. A ne pas passer a false si un backup existe deja dans le state sans procedure de conservation."
+  type        = bool
+  default     = true
+}
+
 variable "gateway_dmz" {
   description = "Passerelle pour le VLAN DMZ"
   type        = string

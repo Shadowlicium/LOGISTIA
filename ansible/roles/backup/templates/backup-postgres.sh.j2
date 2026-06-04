@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+BACKUP_ROOT="{{ backup_root }}"
+KEY="{{ backup_ssh_key_path }}"
+DB_HOST="{{ hostvars[backup_db_inventory_host].ansible_host | default(backup_db_inventory_host) }}"
+RETENTION_DAYS="{{ backup_retention_days }}"
+STAMP="$(date +%Y%m%d-%H%M%S)"
+DEST_DIR="$BACKUP_ROOT/postgres/dumps"
+LOG_FILE="$BACKUP_ROOT/logs/postgres.log"
+DEST_FILE="$DEST_DIR/postgres-$STAMP.sql.gz"
+
+mkdir -p "$DEST_DIR" "$BACKUP_ROOT/logs"
+
+{
+  echo "[$(date --iso-8601=seconds)] Starting PostgreSQL backup from $DB_HOST"
+  ssh -i "$KEY" -o BatchMode=yes -o StrictHostKeyChecking=accept-new root@"$DB_HOST" \
+    "runuser -u postgres -- pg_dumpall" | gzip -c > "$DEST_FILE"
+  ln -sfn "$DEST_FILE" "$BACKUP_ROOT/postgres/latest.sql.gz"
+  find "$DEST_DIR" -type f -name '*.sql.gz' -mtime +"$RETENTION_DAYS" -delete
+  echo "[$(date --iso-8601=seconds)] PostgreSQL backup completed: $DEST_FILE"
+} >> "$LOG_FILE" 2>&1
