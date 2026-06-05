@@ -151,3 +151,30 @@
       destination: "{{ item.destination }}"
   loop: "{{ mail_aliases | default([]) }}"
   no_log: true
+
+- name: Create Roundcube database user when configured
+  become_user: postgres
+  community.postgresql.postgresql_user:
+    name: "{{ roundcube_db_user }}"
+    password: "{{ roundcube_db_password }}"
+    state: present
+  when:
+    - roundcube_db_user is defined
+    - roundcube_db_user | length > 0
+    - roundcube_db_password is defined
+    - roundcube_db_password | length > 0
+  no_log: true
+
+- name: Create Roundcube database when configured
+  become_user: postgres
+  community.postgresql.postgresql_db:
+    name: "{{ roundcube_db_name }}"
+    owner: "{{ roundcube_db_user }}"
+    state: present
+  when:
+    - roundcube_db_name is defined
+    - roundcube_db_name | length > 0
+    - roundcube_db_user is defined
+    - roundcube_db_user | length > 0
+    - roundcube_db_password is defined
+    - roundcube_db_password | length > 0

@@ -21,6 +21,7 @@ Cela permet aussi de relire ou modifier un service sans toucher au reste de l'in
 | `mail_relay` | `mail-relay` | configure Postfix en relais DMZ avec Rspamd |
 | `postfix` | `mail-data` | configure Postfix pour les boites virtuelles |
 | `dovecot` | `mail-data` | configure IMAP et LMTP avec PostgreSQL |
+| `mail_log_forwarder` | `mail-relay`, `mail-data` | envoie les logs mail au conteneur IA |
 | `monitoring_exporter` | tous les conteneurs geres | expose les metriques Prometheus |
 | `grafana` | `grafana` | installe Prometheus, Grafana, dashboards et alertes |
 | `ollama` | `ollama-ia` | installe le service IA et l'analyse de logs |
@@ -107,3 +108,5 @@ Le serveur mail interne utilise des comptes virtuels stockes dans PostgreSQL.
 Ce choix evite de creer un compte Linux par adresse mail. Postfix et Dovecot interrogent PostgreSQL pour savoir quels domaines, boites et alias existent.
 
 Les mots de passe sont stockes en `SHA512-CRYPT`, pas en clair.
+
+Les logs mail sont centralises vers `ollama-ia` avec rsyslog en TCP. Le role `mail_log_forwarder` configure les serveurs mail pour envoyer les evenements `mail.*`, et le role `ollama` accepte uniquement les IPs mail declarees dans `mail_log_source_ips`.

@@ -16,36 +16,6 @@ on:
         required: true
         default: true
         type: boolean
-      deploy_web:
-        description: "Create and configure web-apache"
-        required: true
-        default: true
-        type: boolean
-      deploy_mail_relay:
-        description: "Create and configure mail-relay"
-        required: true
-        default: true
-        type: boolean
-      deploy_db:
-        description: "Create and configure db-postgres"
-        required: true
-        default: true
-        type: boolean
-      deploy_mail_data:
-        description: "Create and configure mail-data"
-        required: true
-        default: true
-        type: boolean
-      deploy_grafana:
-        description: "Create and configure grafana"
-        required: true
-        default: true
-        type: boolean
-      deploy_ollama:
-        description: "Create and configure ollama-ia"
-        required: true
-        default: true
-        type: boolean
       deploy_backup:
         description: "Create and configure the backup server"
         required: true
@@ -64,22 +34,10 @@ jobs:
       TF_VAR_proxmox_user: ${{ secrets.PROXMOX_USER }}
       TF_VAR_proxmox_password: ${{ secrets.PROXMOX_PASSWORD }}
       TF_VAR_ssh_public_key: ${{ secrets.SSH_PUBLIC_KEY }}
-      TF_VAR_deploy_web: ${{ inputs.deploy_web }}
-      TF_VAR_deploy_mail_relay: ${{ inputs.deploy_mail_relay }}
-      TF_VAR_deploy_db: ${{ inputs.deploy_db }}
-      TF_VAR_deploy_mail_data: ${{ inputs.deploy_mail_data }}
-      TF_VAR_deploy_grafana: ${{ inputs.deploy_grafana }}
-      TF_VAR_deploy_ollama: ${{ inputs.deploy_ollama }}
       TF_VAR_deploy_backup: ${{ inputs.deploy_backup }}
       ANSIBLE_MAIL_VARS: ${{ secrets.ANSIBLE_MAIL_VARS }}
       ANSIBLE_ADMIN_SSH_PUBLIC_KEY: ${{ secrets.SSH_PUBLIC_KEY }}
       ANSIBLE_SSH_PRIVATE_KEY: ${{ secrets.ANSIBLE_SSH_PRIVATE_KEY }}
-      ANSIBLE_DEPLOY_WEB: ${{ inputs.deploy_web }}
-      ANSIBLE_DEPLOY_MAIL_RELAY: ${{ inputs.deploy_mail_relay }}
-      ANSIBLE_DEPLOY_DB: ${{ inputs.deploy_db }}
-      ANSIBLE_DEPLOY_MAIL_DATA: ${{ inputs.deploy_mail_data }}
-      ANSIBLE_DEPLOY_GRAFANA: ${{ inputs.deploy_grafana }}
-      ANSIBLE_DEPLOY_OLLAMA: ${{ inputs.deploy_ollama }}
       ANSIBLE_DEPLOY_BACKUP: ${{ inputs.deploy_backup }}
       TERRAFORM_STATE_PATH: ${{ vars.TERRAFORM_STATE_PATH }}
     steps:
@@ -143,12 +101,6 @@ jobs:
             fi
           }
 
-          check_optional_state "$TF_VAR_deploy_web" "vm_web" "deploy_web"
-          check_optional_state "$TF_VAR_deploy_mail_relay" "vm_postfix" "deploy_mail_relay"
-          check_optional_state "$TF_VAR_deploy_db" "vm_db" "deploy_db"
-          check_optional_state "$TF_VAR_deploy_mail_data" "vm_mail_backend" "deploy_mail_data"
-          check_optional_state "$TF_VAR_deploy_grafana" "vm_grafana" "deploy_grafana"
-          check_optional_state "$TF_VAR_deploy_ollama" "vm_ollama" "deploy_ollama"
           check_optional_state "$TF_VAR_deploy_backup" "vm_backup" "deploy_backup"
         working-directory: infra/terraform
 
@@ -186,32 +138,18 @@ jobs:
           {
             printf 'admin_ssh_public_key: >-\n  %s\n' "$ANSIBLE_ADMIN_SSH_PUBLIC_KEY"
             printf 'disable_password_ssh_login: true\n'
-            printf 'deploy_web: %s\n' "$ANSIBLE_DEPLOY_WEB"
-            printf 'deploy_mail_relay: %s\n' "$ANSIBLE_DEPLOY_MAIL_RELAY"
-            printf 'deploy_db: %s\n' "$ANSIBLE_DEPLOY_DB"
-            printf 'deploy_mail_data: %s\n' "$ANSIBLE_DEPLOY_MAIL_DATA"
-            printf 'deploy_grafana: %s\n' "$ANSIBLE_DEPLOY_GRAFANA"
-            printf 'deploy_ollama: %s\n' "$ANSIBLE_DEPLOY_OLLAMA"
             printf 'deploy_backup: %s\n' "$ANSIBLE_DEPLOY_BACKUP"
             printf 'backup_enabled: %s\n' "$ANSIBLE_DEPLOY_BACKUP"
+            printf 'mail_log_forwarding_enabled: true\n'
+            printf 'mail_log_ai_host: 10.10.40.11\n'
+            printf 'mail_log_ai_port: 514\n'
           } > ansible/group_vars/all.yml
           printf '%s\n' "$ANSIBLE_MAIL_VARS" > ansible/group_vars/mail.yml
 
       - name: Wait for SSH on containers
         if: ${{ inputs.run_ansible && inputs.terraform_action == 'apply' }}
         run: |
-          if [ "$ANSIBLE_DEPLOY_WEB$ANSIBLE_DEPLOY_MAIL_RELAY$ANSIBLE_DEPLOY_DB$ANSIBLE_DEPLOY_MAIL_DATA$ANSIBLE_DEPLOY_GRAFANA$ANSIBLE_DEPLOY_OLLAMA$ANSIBLE_DEPLOY_BACKUP" = "falsefalsefalsefalsefalsefalsefalse" ]; then
-            echo "No container selected, skipping SSH wait."
-            exit 0
-          fi
-
           target="managed_containers"
-          [ "$ANSIBLE_DEPLOY_WEB" = "true" ] || target="${target}:!webservers"
-          [ "$ANSIBLE_DEPLOY_MAIL_RELAY" = "true" ] || target="${target}:!mail_relays"
-          [ "$ANSIBLE_DEPLOY_DB" = "true" ] || target="${target}:!databases"
-          [ "$ANSIBLE_DEPLOY_MAIL_DATA" = "true" ] || target="${target}:!mailservers"
-          [ "$ANSIBLE_DEPLOY_GRAFANA" = "true" ] || target="${target}:!monitoring"
-          [ "$ANSIBLE_DEPLOY_OLLAMA" = "true" ] || target="${target}:!ai"
           [ "$ANSIBLE_DEPLOY_BACKUP" = "true" ] || target="${target}:!backups"
           "$RUNNER_TEMP/ansible-venv/bin/ansible" "$target" -i inventory.ini -m wait_for_connection -a "timeout=300"
         working-directory: ansible
@@ -220,18 +158,7 @@ jobs:
         if: ${{ inputs.run_ansible && inputs.terraform_action == 'apply' }}
         timeout-minutes: 45
         run: |
-          if [ "$ANSIBLE_DEPLOY_WEB$ANSIBLE_DEPLOY_MAIL_RELAY$ANSIBLE_DEPLOY_DB$ANSIBLE_DEPLOY_MAIL_DATA$ANSIBLE_DEPLOY_GRAFANA$ANSIBLE_DEPLOY_OLLAMA$ANSIBLE_DEPLOY_BACKUP" = "falsefalsefalsefalsefalsefalsefalse" ]; then
-            echo "No container selected, skipping Ansible."
-            exit 0
-          fi
-
           limit="all"
-          [ "$ANSIBLE_DEPLOY_WEB" = "true" ] || limit="${limit}:!webservers"
-          [ "$ANSIBLE_DEPLOY_MAIL_RELAY" = "true" ] || limit="${limit}:!mail_relays"
-          [ "$ANSIBLE_DEPLOY_DB" = "true" ] || limit="${limit}:!databases"
-          [ "$ANSIBLE_DEPLOY_MAIL_DATA" = "true" ] || limit="${limit}:!mailservers"
-          [ "$ANSIBLE_DEPLOY_GRAFANA" = "true" ] || limit="${limit}:!monitoring"
-          [ "$ANSIBLE_DEPLOY_OLLAMA" = "true" ] || limit="${limit}:!ai"
           [ "$ANSIBLE_DEPLOY_BACKUP" = "true" ] || limit="${limit}:!backups"
           limit_args=(--limit "$limit")
           ANSIBLE_ROLES_PATH=roles "$RUNNER_TEMP/ansible-venv/bin/ansible-playbook" -i inventory.ini playbooks/site.yml "${limit_args[@]}"

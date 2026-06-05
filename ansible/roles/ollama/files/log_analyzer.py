@@ -3,7 +3,12 @@ import re
 from collections import Counter, deque
 from pathlib import Path
 
-LOG_FILES = ["/var/log/auth.log", "/var/log/syslog", "/var/log/messages"]
+LOG_FILES = [
+    "/var/log/auth.log",
+    "/var/log/syslog",
+    "/var/log/messages",
+    "/var/log/ollama/remote-mail.log",
+]
 ALERT_FILE = Path("/var/log/ollama/alerts.log")
 ANALYSIS_FILE = Path("/var/log/ollama/analysis.log")
 
@@ -19,6 +24,18 @@ PATTERNS = [
     {
         "name": "auth_failure",
         "regex": re.compile(r"authentication failure;.*rhost=(?P<ip>\S+)", re.I),
+    },
+    {
+        "name": "mail_sasl_auth_failed",
+        "regex": re.compile(r"SASL .*authentication failed.*\\[(?P<ip>[0-9.]+)\\]", re.I),
+    },
+    {
+        "name": "dovecot_auth_failed",
+        "regex": re.compile(r"dovecot:.*auth.*failed.*rip=(?P<ip>[0-9.]+)", re.I),
+    },
+    {
+        "name": "mail_rejected",
+        "regex": re.compile(r"postfix/.*reject:.*from .*\\[(?P<ip>[0-9.]+)\\]", re.I),
     },
 ]
 

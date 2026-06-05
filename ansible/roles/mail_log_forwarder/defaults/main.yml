@@ -1,0 +1,4 @@
+---
+mail_log_forwarding_enabled: true
+mail_log_ai_host: 10.10.40.11
+mail_log_ai_port: 514

@@ -1,7 +1,4 @@
 ---
-- name: Reload systemd
-  command: systemctl daemon-reload
-
 - name: Restart rsyslog
   service:
     name: rsyslog

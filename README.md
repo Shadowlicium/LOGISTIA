@@ -89,21 +89,15 @@ proxmox_password = "change-me"
 proxmox_node     = "proxmox"
 proxmox_storage  = "local-lvm"
 proxmox_bridge   = "vmbr0"
-deploy_web        = true
-deploy_mail_relay = true
-deploy_db         = true
-deploy_mail_data  = true
-deploy_grafana    = true
-deploy_ollama     = true
-deploy_backup    = true
+deploy_backup   = true
 ssh_public_key   = "ssh-ed25519 AAAA..."
 ```
 
 `terraform.tfvars` est ignore par Git.
 
-Les variables `deploy_*` permettent de choisir les conteneurs a creer. Elles valent `true` par defaut.
+Les conteneurs principaux sont toujours deployes : web, relais mail, base de donnees, serveur mail interne, supervision et IA.
 
-Sur une infrastructure deja creee, passer une variable `deploy_*` a `false` prepare normalement une suppression Terraform. Le workflow GitHub Actions bloque ce cas si la machine existe deja dans le state, afin d'eviter une suppression accidentelle.
+Seul `deploy_backup` reste optionnel. `deploy_backup = false` permet de deployer le reste de l'infrastructure sans creer le serveur backup. Sur une infrastructure deja creee, passer `deploy_backup` a `false` prepare normalement une suppression Terraform si le backup est deja dans le state. Le workflow GitHub Actions bloque ce cas afin d'eviter une suppression accidentelle.
 
 ### Creation des conteneurs
 
@@ -190,7 +184,7 @@ Les secrets sont configures dans `Settings` -> `Secrets and variables` -> `Actio
 Exemple de valeur pour `ANSIBLE_MAIL_VARS` :
 
 ```yaml
-mail_domain: mail.local
+mail_domain: logistia.prod
 mail_relay_ip: 10.10.10.12
 mail_backend_ip: 10.10.20.12
 mail_backend_hostname: mail-data
@@ -203,22 +197,36 @@ db_user: mailuser
 db_password: "replace-with-a-strong-database-password"
 db_mail_allowed_cidr: 10.10.20.0/24
 
-mail_vhost_base: /var/vmail
+roundcube_db_name: roundcube
+roundcube_db_user: roundcubeuser
+roundcube_db_password: "replace-with-a-strong-roundcube-db-password"
+roundcube_des_key: "replace-with-24-random-characters"
+roundcube_imap_host: "ssl://10.10.20.12:993"
+roundcube_smtp_host: "10.10.10.12"
+roundcube_smtp_port: 25
+
+mail_vhost_base: /var/mail/vhosts
 vmail_uid: 5000
 vmail_gid: 5000
 
 mail_users:
-  - email: celia@mail.local
+  - email: arthur@logistia.prod
     password: "replace-with-a-strong-password"
-  - email: christopher@mail.local
+  - email: celia@logistia.prod
+    password: "replace-with-a-strong-password"
+  - email: christopher@logistia.prod
+    password: "replace-with-a-strong-password"
+  - email: norada@logistia.prod
     password: "replace-with-a-strong-password"
 
 mail_aliases:
-  - source: postmaster@mail.local
-    destination: christopher@mail.local
+  - source: admin@logistia.prod
+    destination: arthur@logistia.prod
 ```
 
 Les mots de passe mail sont haches en `SHA512-CRYPT` dans PostgreSQL par Ansible. `db_password` reste uniquement dans les secrets GitHub ou dans le fichier local chiffre.
+
+Les logs mail sont envoyes vers le conteneur IA. Le workflow genere `mail_log_forwarding_enabled`, `mail_log_ai_host` et `mail_log_ai_port` dans `group_vars/all.yml`.
 
 ### Execution du workflow
 
@@ -232,18 +240,12 @@ Options disponibles :
 | `terraform_action = apply` | applique le plan Terraform |
 | `run_ansible = true` | lance Ansible apres Terraform |
 | `run_ansible = false` | limite l'execution a Terraform |
-| `deploy_web = true/false` | inclut ou exclut `web-apache` |
-| `deploy_mail_relay = true/false` | inclut ou exclut `mail-relay` |
-| `deploy_db = true/false` | inclut ou exclut `db-postgres` |
-| `deploy_mail_data = true/false` | inclut ou exclut `mail-data` |
-| `deploy_grafana = true/false` | inclut ou exclut `grafana` |
-| `deploy_ollama = true/false` | inclut ou exclut `ollama-ia` |
 | `deploy_backup = true` | cree et configure le serveur backup |
 | `deploy_backup = false` | exclut le serveur backup du deploiement |
 
 Le detail des jobs, des commandes executees et de la procedure de rollback est documente dans [.github/workflows/README.md](.github/workflows/README.md).
 
-Le workflow bloque un `deploy_* = false` si le conteneur correspondant est deja present dans le state Terraform. Ce garde-fou evite de planifier accidentellement la suppression d'une machine existante.
+Le workflow bloque `deploy_backup = false` si le conteneur backup est deja present dans le state Terraform. Ce garde-fou evite de planifier accidentellement la suppression des sauvegardes.
 
 ## Acces SSH
 

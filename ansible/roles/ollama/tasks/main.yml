@@ -36,6 +36,32 @@
     group: root
     mode: '0755'
 
+- name: Configure rsyslog TCP listener for remote mail logs
+  template:
+    src: rsyslog-mail-receiver.conf.j2
+    dest: /etc/rsyslog.d/20-logistia-mail-receiver.conf
+    owner: root
+    group: root
+    mode: '0644'
+  when: mail_log_receive_enabled | bool
+  notify: Restart rsyslog
+
+- name: Ensure remote mail log exists
+  file:
+    path: "{{ mail_log_receive_file }}"
+    state: touch
+    owner: root
+    group: adm
+    mode: '0640'
+  when: mail_log_receive_enabled | bool
+
+- name: Ensure rsyslog is started for mail log reception
+  service:
+    name: rsyslog
+    state: started
+    enabled: yes
+  when: mail_log_receive_enabled | bool
+
 - name: Create Ollama systemd service
   copy:
     dest: /etc/systemd/system/ollama-log-analysis.service

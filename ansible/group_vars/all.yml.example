@@ -5,12 +5,6 @@ admin_ssh_public_key: "ssh-ed25519 AAAA..."
 disable_password_ssh_login: true
 
 # Container deployment switches used by the GitHub workflow and monitoring templates.
-deploy_web: true
-deploy_mail_relay: true
-deploy_db: true
-deploy_mail_data: true
-deploy_grafana: true
-deploy_ollama: true
 deploy_backup: true
 
 # Kept for the backup roles.
@@ -20,3 +14,8 @@ backup_enabled: "{{ deploy_backup }}"
 # unless backup_restore_force_file exists on the source machine.
 backup_restore_on_boot: true
 backup_restore_force_file: /var/lib/logistia-backup/force-restore
+
+# Mail logs are forwarded to the IA server for analysis.
+mail_log_forwarding_enabled: true
+mail_log_ai_host: 10.10.40.11
+mail_log_ai_port: 514

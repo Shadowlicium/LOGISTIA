@@ -92,6 +92,7 @@ Chaque role a une responsabilite :
 - `mail_relay` configure le relais Postfix en DMZ avec Rspamd.
 - `postfix` configure le serveur mail interne.
 - `dovecot` configure l'acces IMAP et LMTP.
+- `mail_log_forwarder` envoie les logs mail vers le conteneur IA pour analyse.
 - `backup` centralise les sauvegardes PostgreSQL et mail.
 - `backup_client` prepare la restauration prudente sur `db-postgres` et `mail-data`.
 - `monitoring_exporter` expose les metriques CPU, RAM, disque, mail et securite.

@@ -30,6 +30,11 @@
   roles:
     - ollama
 
+- hosts: mail_relays:mailservers
+  become: yes
+  roles:
+    - mail_log_forwarder
+
 - hosts: backups
   become: yes
   roles:

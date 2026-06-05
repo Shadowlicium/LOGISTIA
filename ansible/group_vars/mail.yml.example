@@ -2,7 +2,7 @@
 # ansible-vault encrypt ansible/group_vars/mail.yml
 #
 # The real ansible/group_vars/mail.yml file is ignored by Git.
-mail_domain: mail.local
+mail_domain: logistia.prod
 mail_relay_ip: 10.10.10.12
 mail_backend_ip: 10.10.20.12
 mail_backend_hostname: mail-data
@@ -15,20 +15,29 @@ db_user: mailuser
 db_password: "replace-with-a-strong-database-password"
 db_mail_allowed_cidr: 10.10.20.0/24
 
-mail_vhost_base: /var/vmail
+# Roundcube database. The Roundcube role can reuse these values later.
+roundcube_db_user: roundcubeuser
+roundcube_db_password: "replace-with-a-strong-roundcube-database-password"
+roundcube_db_name: roundcube
+roundcube_des_key: "replace-with-a-24-char-random-secret"
+roundcube_imap_host: "ssl://10.10.20.12:993"
+roundcube_smtp_host: "10.10.10.12"
+roundcube_smtp_port: 25
+
+mail_vhost_base: /var/mail/vhosts
 vmail_uid: 5000
 vmail_gid: 5000
 
 mail_users:
-  - email: celia@mail.local
+  - email: arthur@logistia.prod
     password: "replace-with-a-strong-password"
-  - email: christopher@mail.local
+  - email: celia@logistia.prod
     password: "replace-with-a-strong-password"
-  - email: norada@mail.local
+  - email: christopher@logistia.prod
     password: "replace-with-a-strong-password"
-  - email: arthur@mail.local
+  - email: norada@logistia.prod
     password: "replace-with-a-strong-password"
 
 mail_aliases:
-  - source: postmaster@mail.local
-    destination: christopher@mail.local
+  - source: admin@logistia.prod
+    destination: arthur@logistia.prod

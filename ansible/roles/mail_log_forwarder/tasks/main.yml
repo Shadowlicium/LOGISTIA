@@ -1,0 +1,26 @@
+---
+- name: Stop mail log forwarding role when disabled
+  meta: end_host
+  when: not (mail_log_forwarding_enabled | bool)
+
+- name: Ensure rsyslog is installed on mail host
+  apt:
+    name: rsyslog
+    state: present
+    update_cache: no
+    lock_timeout: 120
+
+- name: Forward mail logs to IA log analyzer
+  template:
+    src: rsyslog-mail-forward.conf.j2
+    dest: /etc/rsyslog.d/60-logistia-mail-to-ia.conf
+    owner: root
+    group: root
+    mode: '0644'
+  notify: Restart rsyslog
+
+- name: Ensure rsyslog is started on mail host
+  service:
+    name: rsyslog
+    state: started
+    enabled: yes

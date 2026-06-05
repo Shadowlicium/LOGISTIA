@@ -13,13 +13,7 @@ gateway_backup   = "10.10.99.254"
 # true cree le conteneur backup.
 # false permet de deployer le reste de l'infrastructure sans serveur backup.
 # Ne pas passer a false sur une infrastructure ou le backup existe deja dans le state sans verifier le plan.
-deploy_web        = true
-deploy_mail_relay = true
-deploy_db         = true
-deploy_mail_data  = true
-deploy_grafana    = true
-deploy_ollama     = true
-deploy_backup     = true
+deploy_backup = true
 
 # Use an SSH public key for administration.
 ssh_public_key = "ssh-ed25519 AAAA..."

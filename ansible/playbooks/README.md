@@ -15,11 +15,12 @@ Un playbook principal evite de lancer manuellement chaque role. Il decrit l'ordr
 5. relais mail
 6. serveur mail interne
 7. IA
-8. backup centralise
-9. client de restauration backup sur DB et mail
-10. hardening systeme commun
-11. exporters Prometheus sur les conteneurs
-12. Grafana, Prometheus, dashboards et alertes
+8. forwarding des logs mail vers l'IA
+9. backup centralise
+10. client de restauration backup sur DB et mail
+11. hardening systeme commun
+12. exporters Prometheus sur les conteneurs
+13. Grafana, Prometheus, dashboards et alertes
 
 ## Commande de verification
 
@@ -58,6 +59,12 @@ Le role `monitoring_exporter` installe `prometheus-node-exporter` sur les conten
 Le role `grafana` est applique ensuite sur le conteneur de supervision. Il installe Prometheus, configure les targets, ajoute la datasource Grafana, cree les dashboards et charge les regles d'alerte.
 
 Cet ordre evite que Prometheus demarre avec des targets qui n'existent pas encore.
+
+## Pourquoi les logs mail sont envoyes apres l'IA
+
+Le role `ollama` prepare le fichier de reception et la configuration rsyslog TCP sur le conteneur IA.
+
+Le role `mail_log_forwarder` est applique ensuite sur `mail-relay` et `mail-data`. Il configure rsyslog pour envoyer les logs `mail.*` vers l'IA, ce qui permet a l'analyseur de lire les evenements SMTP, Rspamd, Postfix et Dovecot depuis un point central.
 
 ## Pourquoi `become: yes`
 
