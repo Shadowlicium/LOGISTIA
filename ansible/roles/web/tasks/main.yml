@@ -54,6 +54,15 @@
     state: present
     lock_timeout: 120
 
+- name: Ensure LOGISTIA application directory exists
+  file:
+    path: /var/www/html/logistia
+    state: directory
+    owner: www-data
+    group: www-data
+    mode: '0755'
+  when: logistia_app_enabled | bool
+
 - name: Enable Apache Roundcube configuration
   command: a2enconf roundcube
   args:
@@ -200,12 +209,32 @@
 - name: Deploy LOGISTIA web application database config
   template:
     src: config.php.j2
-    dest: /var/www/html/config.php
+    dest: /var/www/html/logistia/config.php
     owner: root
     group: www-data
     mode: '0640'
-  when: logistia_app_config_enabled | bool
+  when:
+    - logistia_app_enabled | bool
+    - logistia_app_config_enabled | bool
   no_log: true
+
+- name: Deploy LOGISTIA web application files
+  copy:
+    src: "{{ item }}"
+    dest: "/var/www/html/logistia/{{ item }}"
+    owner: www-data
+    group: www-data
+    mode: '0644'
+  loop:
+    - auth.php
+    - logout.php
+    - login.php
+    - index.php
+    - entrepots.php
+    - stocks.php
+    - commandes.php
+    - clients.php
+  when: logistia_app_enabled | bool
 
 - name: Ensure apache is enabled and started
   service:

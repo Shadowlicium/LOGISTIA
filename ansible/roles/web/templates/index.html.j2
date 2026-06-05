@@ -7,6 +7,9 @@
   <body>
     <h1>LOGISTIA - Serveur Web</h1>
     <ul>
+{% if logistia_app_enabled | bool %}
+      <li><a href="/logistia/">Portail LOGISTIA</a></li>
+{% endif %}
 {% if roundcube_enabled | bool %}
       <li><a href="/roundcube/">Roundcube</a></li>
 {% endif %}

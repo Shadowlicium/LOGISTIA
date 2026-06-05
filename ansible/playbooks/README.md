@@ -9,7 +9,7 @@ Ce dossier contient le point d'entree Ansible du projet.
 Un playbook principal evite de lancer manuellement chaque role. Il decrit l'ordre logique de configuration :
 
 1. securisation et utilisateurs sur tous les conteneurs
-2. base de donnees
+2. bases de donnees mail et LOGISTIA
 3. serveur web et webmail
 4. relais mail
 5. serveur mail interne
@@ -45,9 +45,9 @@ Ce choix rend le premier passage plus lisible, evite plusieurs installations APT
 
 ## Pourquoi la base de donnees est appliquee avant le web
 
-Le role `web` configure Roundcube. Roundcube a besoin que la base PostgreSQL et l'utilisateur `roundcubeuser` existent deja.
+Le role `web` configure Roundcube et le portail PHP LOGISTIA. Ces composants ont besoin que les bases PostgreSQL et leurs utilisateurs existent deja.
 
-Le role `db` passe donc avant `web`. Il cree la base mail, la base Roundcube et les regles `pg_hba.conf` qui autorisent le VLAN web a se connecter.
+Les roles `db` et `db_logistia` passent donc avant `web`. Ils creent la base mail, la base Roundcube, la base metier LOGISTIA et les regles `pg_hba.conf` qui autorisent le VLAN web a se connecter.
 
 ## Pourquoi backup est applique avant backup_client
 

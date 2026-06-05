@@ -1,0 +1,181 @@
+---
+- name: Stop LOGISTIA database role when disabled
+  meta: end_play
+  when: not (logistia_app_enabled | bool)
+
+- name: Ensure LOGISTIA database variables are provided
+  assert:
+    that:
+      - logistia_db_name is defined
+      - logistia_db_name | length > 0
+      - logistia_db_user is defined
+      - logistia_db_user | length > 0
+      - logistia_db_password is defined
+      - logistia_db_password | length > 0
+      - logistia_web_password_hash is defined
+      - logistia_web_password_hash | length > 0
+      - logistia_web_users is defined
+      - logistia_web_users | length > 0
+    fail_msg: "Define logistia_db_* and logistia_web_password_hash in ANSIBLE_MAIL_VARS."
+  no_log: true
+
+- name: Install PostgreSQL Python dependency
+  apt:
+    name: python3-psycopg2
+    state: present
+    lock_timeout: 120
+
+- name: Allow web container to connect to LOGISTIA database
+  lineinfile:
+    path: /etc/postgresql/16/main/pg_hba.conf
+    line: "host    {{ logistia_db_name }}    {{ logistia_db_user }}    {{ logistia_db_allowed_cidr }}    scram-sha-256"
+    state: present
+  notify: Restart postgresql
+
+- name: Flush PostgreSQL handlers before LOGISTIA database tasks
+  meta: flush_handlers
+
+- name: Create LOGISTIA database
+  become_user: postgres
+  community.postgresql.postgresql_db:
+    name: "{{ logistia_db_name }}"
+    encoding: UTF8
+    state: present
+
+- name: Create LOGISTIA database user
+  become_user: postgres
+  community.postgresql.postgresql_user:
+    name: "{{ logistia_db_user }}"
+    password: "{{ logistia_db_password }}"
+    db: "{{ logistia_db_name }}"
+    state: present
+  no_log: true
+
+- name: Grant LOGISTIA database privileges
+  become_user: postgres
+  community.postgresql.postgresql_privs:
+    db: "{{ logistia_db_name }}"
+    privs: ALL
+    type: database
+    role: "{{ logistia_db_user }}"
+
+- name: Create LOGISTIA business schema
+  become_user: postgres
+  community.postgresql.postgresql_query:
+    db: "{{ logistia_db_name }}"
+    query: |
+      CREATE TABLE IF NOT EXISTS entrepots (
+          id SERIAL PRIMARY KEY,
+          nom VARCHAR(100) UNIQUE NOT NULL,
+          adresse VARCHAR(255),
+          ville VARCHAR(100),
+          capacite_max INTEGER,
+          created_at TIMESTAMP DEFAULT NOW()
+      );
+
+      CREATE TABLE IF NOT EXISTS clients (
+          id SERIAL PRIMARY KEY,
+          nom VARCHAR(100) NOT NULL,
+          email VARCHAR(150) UNIQUE,
+          telephone VARCHAR(20),
+          secteur VARCHAR(50),
+          created_at TIMESTAMP DEFAULT NOW()
+      );
+
+      CREATE TABLE IF NOT EXISTS produits (
+          id SERIAL PRIMARY KEY,
+          nom VARCHAR(150) NOT NULL,
+          reference VARCHAR(50) UNIQUE,
+          description TEXT,
+          poids_kg NUMERIC(8,2),
+          created_at TIMESTAMP DEFAULT NOW()
+      );
+
+      CREATE TABLE IF NOT EXISTS stocks (
+          id SERIAL PRIMARY KEY,
+          entrepot_id INTEGER REFERENCES entrepots(id),
+          produit_id INTEGER REFERENCES produits(id),
+          quantite INTEGER DEFAULT 0,
+          seuil_alerte INTEGER DEFAULT 10,
+          updated_at TIMESTAMP DEFAULT NOW(),
+          UNIQUE (entrepot_id, produit_id)
+      );
+
+      CREATE TABLE IF NOT EXISTS commandes (
+          id SERIAL PRIMARY KEY,
+          client_id INTEGER REFERENCES clients(id),
+          entrepot_id INTEGER REFERENCES entrepots(id),
+          statut VARCHAR(50) DEFAULT 'en_attente',
+          date_commande TIMESTAMP DEFAULT NOW(),
+          date_livraison TIMESTAMP
+      );
+
+      CREATE TABLE IF NOT EXISTS lignes_commande (
+          id SERIAL PRIMARY KEY,
+          commande_id INTEGER REFERENCES commandes(id),
+          produit_id INTEGER REFERENCES produits(id),
+          quantite INTEGER NOT NULL
+      );
+
+      CREATE TABLE IF NOT EXISTS utilisateurs (
+          id SERIAL PRIMARY KEY,
+          username VARCHAR(100) UNIQUE NOT NULL,
+          password VARCHAR(255) NOT NULL,
+          nom VARCHAR(100),
+          role VARCHAR(50) DEFAULT 'user',
+          created_at TIMESTAMP DEFAULT NOW()
+      );
+
+      GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO {{ logistia_db_user }};
+      GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO {{ logistia_db_user }};
+      ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL PRIVILEGES ON TABLES TO {{ logistia_db_user }};
+      ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL PRIVILEGES ON SEQUENCES TO {{ logistia_db_user }};
+
+- name: Insert LOGISTIA sample data
+  become_user: postgres
+  community.postgresql.postgresql_query:
+    db: "{{ logistia_db_name }}"
+    query: |
+      INSERT INTO entrepots (nom, adresse, ville, capacite_max) VALUES
+      ('Entrepot Nord', '12 rue de la Logistique', 'Lille', 5000),
+      ('Entrepot Sud', '45 avenue des Transports', 'Marseille', 8000),
+      ('Entrepot Est', '8 route Industrielle', 'Strasbourg', 3500)
+      ON CONFLICT DO NOTHING;
+
+      INSERT INTO clients (nom, email, telephone, secteur) VALUES
+      ('Amazon FR', 'contact@amazon.fr', '0102030405', 'e-commerce'),
+      ('Leroy Merlin', 'logistique@leroymerlin.fr', '0607080910', 'industriel'),
+      ('CDiscount', 'supply@cdiscount.com', '0203040506', 'e-commerce')
+      ON CONFLICT DO NOTHING;
+
+      INSERT INTO produits (nom, reference, description, poids_kg) VALUES
+      ('Palette standard', 'PAL-001', 'Palette bois 120x80cm', 25.00),
+      ('Carton medium', 'CAR-002', 'Carton 60x40x40cm', 0.50),
+      ('Colis fragile', 'COL-003', 'Emballage renforce', 1.20)
+      ON CONFLICT DO NOTHING;
+
+      INSERT INTO stocks (entrepot_id, produit_id, quantite, seuil_alerte)
+      SELECT e.id, p.id, 5, 10
+      FROM entrepots e CROSS JOIN produits p
+      WHERE e.nom = 'Entrepot Nord' AND p.reference = 'CAR-002'
+      ON CONFLICT (entrepot_id, produit_id) DO NOTHING;
+  when: logistia_seed_sample_data | bool
+
+- name: Insert LOGISTIA web users
+  become_user: postgres
+  community.postgresql.postgresql_query:
+    db: "{{ logistia_db_name }}"
+    query: |
+      INSERT INTO utilisateurs (username, password, nom, role)
+      VALUES (%(username)s, %(password_hash)s, %(nom)s, %(role)s)
+      ON CONFLICT (username) DO UPDATE SET
+        password = EXCLUDED.password,
+        nom = EXCLUDED.nom,
+        role = EXCLUDED.role;
+    named_args:
+      username: "{{ item.username }}"
+      password_hash: "{{ item.password_hash | default(logistia_web_password_hash) }}"
+      nom: "{{ item.nom }}"
+      role: "{{ item.role | default('user') }}"
+  loop: "{{ logistia_web_users }}"
+  no_log: true

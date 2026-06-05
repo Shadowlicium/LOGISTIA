@@ -30,6 +30,13 @@ roundcube_smtp_port: 25
 postfixadmin_enabled: false
 postfixadmin_setup_password_hash: ""
 
+logistia_app_enabled: true
+logistia_db_name: logistia
+logistia_db_user: logistia_user
+logistia_db_password: "replace-with-a-strong-logistia-database-password"
+logistia_web_password_hash: "replace-with-a-bcrypt-password-hash"
+logistia_seed_sample_data: true
+
 mail_vhost_base: /var/mail/vhosts
 vmail_uid: 5000
 vmail_gid: 5000

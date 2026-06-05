@@ -3,12 +3,13 @@ roundcube_enabled: true
 roundcube_twofactor_plugin_enabled: true
 roundcube_twofactor_plugin_version: master
 
-logistia_app_config_enabled: true
+logistia_app_enabled: true
+logistia_app_config_enabled: "{{ logistia_app_enabled }}"
 logistia_db_host: "{{ db_host }}"
 logistia_db_port: "{{ db_port | default(5432) }}"
-logistia_db_name: "{{ db_name }}"
-logistia_db_user: "{{ db_user }}"
-logistia_db_password: "{{ db_password }}"
+logistia_db_name: logistia
+logistia_db_user: logistia_user
+logistia_db_password: ""
 
 postfixadmin_enabled: false
 postfixadmin_version: "3.3.13"

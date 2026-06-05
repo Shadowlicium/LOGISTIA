@@ -89,6 +89,7 @@ Chaque role a une responsabilite :
 - `hardening` applique le durcissement systeme commun.
 - `web` installe Apache, Roundcube et prepare PostfixAdmin.
 - `db` configure PostgreSQL pour les comptes mail virtuels.
+- `db_logistia` configure la base metier du portail LOGISTIA.
 - `mail_relay` configure le relais Postfix en DMZ avec Rspamd.
 - `postfix` configure le serveur mail interne.
 - `dovecot` configure l'acces IMAP et LMTP.

@@ -4,21 +4,35 @@ Ce role configure le conteneur `web-apache`.
 
 Il installe Apache, PHP, Roundcube et les dependances necessaires pour acceder au serveur mail interne.
 
-## Configuration PHP LOGISTIA
+## Portail PHP LOGISTIA
 
-Le role genere `/var/www/html/config.php` depuis `templates/config.php.j2`.
+Le role deploie le portail PHP LOGISTIA dans `/var/www/html/logistia/`.
 
-Ce fichier expose une fonction `getDB()` pour les pages PHP du projet. Par defaut, les variables `logistia_db_*` reprennent les variables PostgreSQL deja presentes dans `ANSIBLE_MAIL_VARS` :
+Les fichiers applicatifs viennent de `roles/web/files/` :
 
-- `logistia_db_host` reprend `db_host`
-- `logistia_db_port` reprend `db_port`
-- `logistia_db_name` reprend `db_name`
-- `logistia_db_user` reprend `db_user`
-- `logistia_db_password` reprend `db_password`
+- `login.php`
+- `index.php`
+- `entrepots.php`
+- `stocks.php`
+- `commandes.php`
+- `clients.php`
+- `auth.php`
+- `logout.php`
+
+Le role genere `/var/www/html/logistia/config.php` depuis `templates/config.php.j2`.
+
+Ce fichier expose une fonction `getDB()` pour les pages PHP du projet. Les variables sensibles viennent de `ANSIBLE_MAIL_VARS` :
+
+- `logistia_db_host`
+- `logistia_db_port`
+- `logistia_db_name`
+- `logistia_db_user`
+- `logistia_db_password`
+- `logistia_web_password_hash`
 
 Le fichier est deploye en `0640` avec le groupe `www-data`, et la tache Ansible est marquee `no_log` pour ne pas afficher le mot de passe dans les logs.
 
-Si l'application web doit utiliser une base dediee plus tard, ces variables peuvent etre surchargees dans `ANSIBLE_MAIL_VARS`.
+La base metier est creee par le role `db_logistia`.
 
 ## Roundcube
 

@@ -1,0 +1,21 @@
+---
+logistia_app_enabled: true
+logistia_db_name: logistia
+logistia_db_user: logistia_user
+logistia_db_password: ""
+logistia_db_allowed_cidr: "{{ db_web_allowed_cidr | default('10.10.10.0/24') }}"
+logistia_seed_sample_data: true
+logistia_web_password_hash: ""
+logistia_web_users:
+  - username: arthur
+    nom: Arthur
+    role: admin
+  - username: christopher
+    nom: Christopher
+    role: user
+  - username: norada
+    nom: Norada
+    role: user
+  - username: celia
+    nom: Celia
+    role: user

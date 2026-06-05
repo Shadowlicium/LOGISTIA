@@ -1,0 +1,67 @@
+<?php require_once 'auth.php'; require_once 'config.php';
+$db = getDB();
+$stocks = $db->query("SELECT s.*, p.nom as produit, p.reference, e.nom as entrepot, e.ville
+    FROM stocks s
+    JOIN produits p ON p.id = s.produit_id
+    JOIN entrepots e ON e.id = s.entrepot_id
+    ORDER BY e.nom, p.nom")->fetchAll(PDO::FETCH_ASSOC);
+?>
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>LOGISTIA — Stocks</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', sans-serif; background: #0f1117; color: #e0e0e0; }
+        header { background: #1a1d27; padding: 20px 40px; display: flex; align-items: center; justify-content: space-between; border-bottom: 2px solid #2563eb; }
+        header h1 { font-size: 1.8rem; color: #2563eb; letter-spacing: 2px; }
+        header nav a { color: #e0e0e0; text-decoration: none; margin-left: 25px; font-size: 0.95rem; }
+        header nav a:hover { color: #2563eb; }
+        .logout { background: #ef444422; color: #ef4444 !important; padding: 5px 12px; border-radius: 6px; }
+        .container { padding: 30px 40px; }
+        .section { background: #1a1d27; border-radius: 10px; padding: 25px; margin-bottom: 25px; }
+        .section h2 { font-size: 1.1rem; margin-bottom: 15px; color: #2563eb; border-bottom: 1px solid #2d3148; padding-bottom: 10px; }
+        table { width: 100%; border-collapse: collapse; }
+        th { text-align: left; padding: 10px; font-size: 0.85rem; color: #9ca3af; border-bottom: 1px solid #2d3148; }
+        td { padding: 10px; font-size: 0.9rem; border-bottom: 1px solid #1f2235; }
+        .ok { color: #10b981; }
+        .alerte { color: #ef4444; font-weight: bold; }
+        .badge-ref { background: #2d3148; padding: 2px 8px; border-radius: 5px; font-size: 0.8rem; }
+    </style>
+</head>
+<body>
+<header>
+    <h1>⬡ LOGISTIA</h1>
+    <nav>
+        <a href="index.php">Dashboard</a>
+        <a href="entrepots.php">Entrepôts</a>
+        <a href="stocks.php">Stocks</a>
+        <a href="commandes.php">Commandes</a>
+        <a href="clients.php">Clients</a>
+        <a href="logout.php" class="logout">⏻ <?= $_SESSION['nom'] ?></a>
+    </nav>
+</header>
+<div class="container">
+    <div class="section">
+        <h2>📊 Stocks</h2>
+        <table>
+            <tr><th>Produit</th><th>Référence</th><th>Entrepôt</th><th>Ville</th><th>Quantité</th><th>Seuil alerte</th><th>Statut</th></tr>
+            <?php foreach ($stocks as $s): ?>
+            <tr>
+                <td><?= htmlspecialchars($s['produit']) ?></td>
+                <td><span class="badge-ref"><?= htmlspecialchars($s['reference']) ?></span></td>
+                <td><?= htmlspecialchars($s['entrepot']) ?></td>
+                <td><?= htmlspecialchars($s['ville']) ?></td>
+                <td><?= $s['quantite'] ?></td>
+                <td><?= $s['seuil_alerte'] ?></td>
+                <td class="<?= $s['quantite'] <= $s['seuil_alerte'] ? 'alerte' : 'ok' ?>">
+                    <?= $s['quantite'] <= $s['seuil_alerte'] ? '⚠ Alerte' : '✓ OK' ?>
+                </td>
+            </tr>
+            <?php endforeach; ?>
+        </table>
+    </div>
+</div>
+</body>
+</html>

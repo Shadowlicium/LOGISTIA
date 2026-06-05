@@ -210,6 +210,13 @@ roundcube_smtp_port: 25
 postfixadmin_enabled: false
 postfixadmin_setup_password_hash: ""
 
+logistia_app_enabled: true
+logistia_db_name: logistia
+logistia_db_user: logistia_user
+logistia_db_password: "replace-with-a-strong-logistia-database-password"
+logistia_web_password_hash: "replace-with-a-bcrypt-password-hash"
+logistia_seed_sample_data: true
+
 mail_vhost_base: /var/mail/vhosts
 vmail_uid: 5000
 vmail_gid: 5000
@@ -233,7 +240,13 @@ Les mots de passe mail sont haches en `SHA512-CRYPT` dans PostgreSQL par Ansible
 
 Roundcube est installe sur le conteneur web et utilise la base `roundcube`. PostfixAdmin est present dans le role web et peut etre active avec `postfixadmin_enabled: true`. En mode `mail_schema: postfixadmin`, Postfix, Dovecot et PostfixAdmin utilisent les memes tables mail.
 
-Le role web genere aussi `/var/www/html/config.php` pour les pages PHP LOGISTIA. Par defaut, ce fichier utilise les memes variables PostgreSQL que le serveur mail. Les variables `logistia_db_*` peuvent etre surchargees si l'application web utilise une base dediee.
+Le role web deploie aussi le portail PHP LOGISTIA dans `/var/www/html/logistia/`. Il utilise une base dediee `logistia` creee par le role `db_logistia`. `logistia_web_password_hash` doit etre un hash Bcrypt compatible avec `password_verify()` en PHP.
+
+Exemple de generation du hash :
+
+```bash
+php -r "echo password_hash('mot-de-passe', PASSWORD_BCRYPT), PHP_EOL;"
+```
 
 Les logs mail sont envoyes vers le conteneur IA. Le workflow genere `mail_log_forwarding_enabled`, `mail_log_ai_host` et `mail_log_ai_port` dans `group_vars/all.yml`.
 

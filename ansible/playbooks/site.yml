@@ -8,6 +8,7 @@
   become: yes
   roles:
     - db
+    - db_logistia
 
 - hosts: webservers
   become: yes
