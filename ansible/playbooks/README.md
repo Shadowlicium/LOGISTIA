@@ -9,18 +9,17 @@ Ce dossier contient le point d'entree Ansible du projet.
 Un playbook principal evite de lancer manuellement chaque role. Il decrit l'ordre logique de configuration :
 
 1. securisation et utilisateurs sur tous les conteneurs
-2. serveur web
-3. base de donnees
-4. supervision
-5. relais mail
-6. serveur mail interne
-7. IA
-8. forwarding des logs mail vers l'IA
-9. backup centralise
-10. client de restauration backup sur DB et mail
-11. hardening systeme commun
-12. exporters Prometheus sur les conteneurs
-13. Grafana, Prometheus, dashboards et alertes
+2. base de donnees
+3. serveur web et webmail
+4. relais mail
+5. serveur mail interne
+6. IA
+7. forwarding des logs mail vers l'IA
+8. backup centralise
+9. client de restauration backup sur DB et mail
+10. hardening systeme commun
+11. exporters Prometheus sur les conteneurs
+12. Grafana, Prometheus, dashboards et alertes
 
 ## Commande de verification
 
@@ -43,6 +42,12 @@ Cette commande se connecte aux machines et applique les roles.
 Le role `users` et le role final `hardening` utilisent `serial: 1`. Les conteneurs sont donc traites un par un pour ces etapes sensibles.
 
 Ce choix rend le premier passage plus lisible, evite plusieurs installations APT simultanees au moment ou les machines viennent juste d'etre creees, puis applique le durcissement final machine par machine.
+
+## Pourquoi la base de donnees est appliquee avant le web
+
+Le role `web` configure Roundcube. Roundcube a besoin que la base PostgreSQL et l'utilisateur `roundcubeuser` existent deja.
+
+Le role `db` passe donc avant `web`. Il cree la base mail, la base Roundcube et les regles `pg_hba.conf` qui autorisent le VLAN web a se connecter.
 
 ## Pourquoi backup est applique avant backup_client
 

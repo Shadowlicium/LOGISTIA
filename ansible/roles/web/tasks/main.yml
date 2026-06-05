@@ -1,23 +1,188 @@
 ---
+- name: Ensure Roundcube variables are provided
+  assert:
+    that:
+      - roundcube_db_user is defined
+      - roundcube_db_user | length > 0
+      - roundcube_db_password is defined
+      - roundcube_db_password | length > 0
+      - roundcube_db_name is defined
+      - roundcube_db_name | length > 0
+      - roundcube_des_key is defined
+      - roundcube_des_key | length >= 24
+    fail_msg: "Define Roundcube database variables and a 24+ character roundcube_des_key in ANSIBLE_MAIL_VARS."
+  when: roundcube_enabled | bool
+  no_log: true
+
 - name: Update apt cache
   apt:
     update_cache: yes
 
-- name: Install Apache
+- name: Install web, PHP and mail UI packages
   apt:
-    name: apache2
+    name:
+      - apache2
+      - php
+      - php-pgsql
+      - php-mbstring
+      - php-intl
+      - php-xml
+      - php-curl
+      - php-zip
+      - php-imap
+      - libapache2-mod-php
+      - postgresql-client
+      - roundcube
+      - roundcube-pgsql
+      - git
     state: present
+    lock_timeout: 120
+
+- name: Enable Apache Roundcube configuration
+  command: a2enconf roundcube
+  args:
+    creates: /etc/apache2/conf-enabled/roundcube.conf
+  when: roundcube_enabled | bool
+  notify: Restart apache
+
+- name: Enable Roundcube HTTP alias
+  lineinfile:
+    path: /etc/apache2/conf-available/roundcube.conf
+    regexp: '^#?\s*Alias\s+/roundcube\s+'
+    line: 'Alias /roundcube /var/lib/roundcube/public_html'
+  when: roundcube_enabled | bool
+  notify: Restart apache
+
+- name: Ensure Roundcube config directory exists
+  file:
+    path: /etc/roundcube
+    state: directory
+    owner: root
+    group: www-data
+    mode: '0750'
+  when: roundcube_enabled | bool
+
+- name: Configure Roundcube
+  template:
+    src: roundcube.conf.j2
+    dest: /etc/roundcube/config.inc.php
+    owner: root
+    group: www-data
+    mode: '0640'
+  when: roundcube_enabled | bool
+  notify: Restart apache
+  no_log: true
+
+- name: Check whether Roundcube schema already exists
+  shell: |
+    PGPASSWORD="{{ roundcube_db_password }}" psql \
+      -U "{{ roundcube_db_user }}" \
+      -h "{{ db_host }}" \
+      -p "{{ db_port | default(5432) }}" \
+      -d "{{ roundcube_db_name }}" \
+      -tAc "SELECT to_regclass('public.users') IS NOT NULL;"
+  args:
+    executable: /bin/bash
+  register: roundcube_schema_check
+  changed_when: false
+  when: roundcube_enabled | bool
+  no_log: true
+
+- name: Initialize Roundcube PostgreSQL schema
+  shell: |
+    PGPASSWORD="{{ roundcube_db_password }}" psql \
+      -U "{{ roundcube_db_user }}" \
+      -h "{{ db_host }}" \
+      -p "{{ db_port | default(5432) }}" \
+      -d "{{ roundcube_db_name }}" \
+      -f /var/lib/roundcube/SQL/postgres.initial.sql
+  args:
+    executable: /bin/bash
+  when:
+    - roundcube_enabled | bool
+    - roundcube_schema_check.stdout | trim != "t"
+  no_log: true
+
+- name: Install Roundcube two-factor plugin
+  git:
+    repo: https://github.com/alexandregz/twofactor_gauthenticator.git
+    dest: /var/lib/roundcube/plugins/twofactor_gauthenticator
+    version: "{{ roundcube_twofactor_plugin_version }}"
+    force: yes
+  when:
+    - roundcube_enabled | bool
+    - roundcube_twofactor_plugin_enabled | bool
+
+- name: Set Roundcube two-factor plugin permissions
+  file:
+    path: /var/lib/roundcube/plugins/twofactor_gauthenticator
+    owner: www-data
+    group: www-data
+    recurse: yes
+  when:
+    - roundcube_enabled | bool
+    - roundcube_twofactor_plugin_enabled | bool
+
+- name: Download PostfixAdmin archive
+  get_url:
+    url: "{{ postfixadmin_archive_url }}"
+    dest: /tmp/postfixadmin.tar.gz
+    mode: '0644'
+  when: postfixadmin_enabled | bool
+
+- name: Extract PostfixAdmin
+  unarchive:
+    src: /tmp/postfixadmin.tar.gz
+    dest: /opt
+    remote_src: yes
+    creates: "{{ postfixadmin_extract_path }}"
+  when: postfixadmin_enabled | bool
+
+- name: Expose PostfixAdmin in Apache document root
+  file:
+    src: "{{ postfixadmin_extract_path }}"
+    dest: /var/www/html/postfixadmin
+    state: link
+    force: yes
+  when: postfixadmin_enabled | bool
+
+- name: Ensure PostfixAdmin templates cache directory exists
+  file:
+    path: "{{ postfixadmin_extract_path }}/templates_c"
+    state: directory
+    owner: www-data
+    group: www-data
+    mode: '0750'
+  when: postfixadmin_enabled | bool
+
+- name: Configure PostfixAdmin
+  template:
+    src: postfixadmin.conf.j2
+    dest: "{{ postfixadmin_extract_path }}/config.local.php"
+    owner: www-data
+    group: www-data
+    mode: '0640'
+  when: postfixadmin_enabled | bool
+  no_log: true
+
+- name: Set PostfixAdmin permissions
+  file:
+    path: "{{ postfixadmin_extract_path }}"
+    owner: www-data
+    group: www-data
+    recurse: yes
+  when: postfixadmin_enabled | bool
+
+- name: Deploy web landing page
+  template:
+    src: index.html.j2
+    dest: /var/www/html/index.html
+    owner: root
+    group: root
+    mode: '0644'
 
 - name: Ensure apache is enabled and started
   service:
     name: apache2
     state: started
     enabled: yes
-
-- name: Deploy simple index.html
-  copy:
-    dest: /var/www/html/index.html
-    content: "<h1>LOGISTIA - Serveur Web</h1>"
-    owner: root
-    group: root
-    mode: '0644'

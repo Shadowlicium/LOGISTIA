@@ -1,0 +1,18 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8">
+    <title>LOGISTIA - Web</title>
+  </head>
+  <body>
+    <h1>LOGISTIA - Serveur Web</h1>
+    <ul>
+{% if roundcube_enabled | bool %}
+      <li><a href="/roundcube/">Roundcube</a></li>
+{% endif %}
+{% if postfixadmin_enabled | bool %}
+      <li><a href="/postfixadmin/public/">PostfixAdmin</a></li>
+{% endif %}
+    </ul>
+  </body>
+</html>

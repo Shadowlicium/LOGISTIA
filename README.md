@@ -45,7 +45,7 @@ Le mail entrant arrive sur le relais en DMZ, passe par l'analyse Rspamd, puis es
 
 | Machine | Role |
 |---|---|
-| `web-apache` | Apache, point web interne |
+| `web-apache` | Apache, Roundcube et point web interne |
 | `mail-relay` | Postfix relais SMTP, Rspamd |
 | `mail-data` | Postfix, Dovecot, boites mail virtuelles |
 | `db-postgres` | PostgreSQL, comptes et alias mail |
@@ -196,6 +196,7 @@ db_name: mailserver
 db_user: mailuser
 db_password: "replace-with-a-strong-database-password"
 db_mail_allowed_cidr: 10.10.20.0/24
+db_web_allowed_cidr: 10.10.10.0/24
 
 roundcube_db_name: roundcube
 roundcube_db_user: roundcubeuser
@@ -204,6 +205,9 @@ roundcube_des_key: "replace-with-24-random-characters"
 roundcube_imap_host: "ssl://10.10.20.12:993"
 roundcube_smtp_host: "10.10.10.12"
 roundcube_smtp_port: 25
+
+postfixadmin_enabled: false
+postfixadmin_setup_password_hash: ""
 
 mail_vhost_base: /var/mail/vhosts
 vmail_uid: 5000
@@ -225,6 +229,8 @@ mail_aliases:
 ```
 
 Les mots de passe mail sont haches en `SHA512-CRYPT` dans PostgreSQL par Ansible. `db_password` reste uniquement dans les secrets GitHub ou dans le fichier local chiffre.
+
+Roundcube est installe sur le conteneur web et utilise la base `roundcube`. PostfixAdmin est present dans le role web mais reste desactive par defaut, car son schema SQL n'est pas encore celui utilise par Postfix et Dovecot dans ce projet.
 
 Les logs mail sont envoyes vers le conteneur IA. Le workflow genere `mail_log_forwarding_enabled`, `mail_log_ai_host` et `mail_log_ai_port` dans `group_vars/all.yml`.
 

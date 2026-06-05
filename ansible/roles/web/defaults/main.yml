@@ -1,0 +1,10 @@
+---
+roundcube_enabled: true
+roundcube_twofactor_plugin_enabled: true
+roundcube_twofactor_plugin_version: master
+
+postfixadmin_enabled: false
+postfixadmin_version: "3.3.13"
+postfixadmin_archive_url: "https://github.com/postfixadmin/postfixadmin/archive/refs/tags/postfixadmin-{{ postfixadmin_version }}.tar.gz"
+postfixadmin_extract_path: "/opt/postfixadmin-postfixadmin-{{ postfixadmin_version }}"
+postfixadmin_setup_password_hash: ""

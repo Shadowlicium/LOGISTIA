@@ -46,6 +46,25 @@
     state: present
   notify: Restart postgresql
 
+- name: Allow web services to connect to mail database
+  lineinfile:
+    path: /etc/postgresql/16/main/pg_hba.conf
+    line: "host    {{ db_name }}    {{ db_user }}    {{ db_web_allowed_cidr }}    scram-sha-256"
+    state: present
+  notify: Restart postgresql
+
+- name: Allow web services to connect to Roundcube database
+  lineinfile:
+    path: /etc/postgresql/16/main/pg_hba.conf
+    line: "host    {{ roundcube_db_name }}    {{ roundcube_db_user }}    {{ db_web_allowed_cidr }}    scram-sha-256"
+    state: present
+  when:
+    - roundcube_db_name is defined
+    - roundcube_db_name | length > 0
+    - roundcube_db_user is defined
+    - roundcube_db_user | length > 0
+  notify: Restart postgresql
+
 - name: Flush PostgreSQL handlers before database tasks
   meta: flush_handlers
 

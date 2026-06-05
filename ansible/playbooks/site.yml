@@ -4,15 +4,15 @@
   roles:
     - users
 
-- hosts: webservers
-  become: yes
-  roles:
-    - web
-
 - hosts: databases
   become: yes
   roles:
     - db
+
+- hosts: webservers
+  become: yes
+  roles:
+    - web
 
 - hosts: mail_relays
   become: yes

@@ -87,7 +87,7 @@ Chaque role a une responsabilite :
 
 - `users` securise l'acces SSH et cree les comptes d'administration.
 - `hardening` applique le durcissement systeme commun.
-- `web` installe Apache.
+- `web` installe Apache, Roundcube et prepare PostfixAdmin.
 - `db` configure PostgreSQL pour les comptes mail virtuels.
 - `mail_relay` configure le relais Postfix en DMZ avec Rspamd.
 - `postfix` configure le serveur mail interne.

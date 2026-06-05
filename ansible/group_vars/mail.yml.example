@@ -14,8 +14,9 @@ db_name: mailserver
 db_user: mailuser
 db_password: "replace-with-a-strong-database-password"
 db_mail_allowed_cidr: 10.10.20.0/24
+db_web_allowed_cidr: 10.10.10.0/24
 
-# Roundcube database. The Roundcube role can reuse these values later.
+# Roundcube webmail database.
 roundcube_db_user: roundcubeuser
 roundcube_db_password: "replace-with-a-strong-roundcube-database-password"
 roundcube_db_name: roundcube
@@ -23,6 +24,11 @@ roundcube_des_key: "replace-with-a-24-char-random-secret"
 roundcube_imap_host: "ssl://10.10.20.12:993"
 roundcube_smtp_host: "10.10.10.12"
 roundcube_smtp_port: 25
+
+# PostfixAdmin is disabled by default because its SQL schema is not the same as
+# the custom Postfix/Dovecot schema used by this project.
+postfixadmin_enabled: false
+postfixadmin_setup_password_hash: ""
 
 mail_vhost_base: /var/mail/vhosts
 vmail_uid: 5000

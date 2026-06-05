@@ -16,7 +16,7 @@ Cela permet aussi de relire ou modifier un service sans toucher au reste de l'in
 |---|---|---|
 | `users` | tous les conteneurs geres | cree les comptes d'administration et durcit SSH |
 | `hardening` | tous les conteneurs geres | applique le durcissement systeme commun |
-| `web` | `web-apache` | installe Apache et une page simple |
+| `web` | `web-apache` | installe Apache, Roundcube et prepare PostfixAdmin |
 | `db` | `db-postgres` | installe PostgreSQL et cree les tables mail |
 | `mail_relay` | `mail-relay` | configure Postfix en relais DMZ avec Rspamd |
 | `postfix` | `mail-data` | configure Postfix pour les boites virtuelles |
