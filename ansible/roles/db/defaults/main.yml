@@ -5,6 +5,7 @@ db_host: 10.10.20.10
 db_port: 5432
 db_name: mailserver
 db_user: mailuser
+mail_schema: postfixadmin
 db_mail_allowed_cidr: 10.10.20.0/24
 db_web_allowed_cidr: 10.10.10.0/24
 mail_vhost_base: /var/vmail

@@ -5,6 +5,7 @@ mail_relay_ip: 10.10.10.12
 db_host: 10.10.20.10
 db_name: mailserver
 db_user: mailuser
+mail_schema: postfixadmin
 mail_vhost_base: /var/vmail
 vmail_uid: 5000
 vmail_gid: 5000

@@ -195,6 +195,7 @@ db_port: 5432
 db_name: mailserver
 db_user: mailuser
 db_password: "replace-with-a-strong-database-password"
+mail_schema: postfixadmin
 db_mail_allowed_cidr: 10.10.20.0/24
 db_web_allowed_cidr: 10.10.10.0/24
 
@@ -230,7 +231,7 @@ mail_aliases:
 
 Les mots de passe mail sont haches en `SHA512-CRYPT` dans PostgreSQL par Ansible. `db_password` reste uniquement dans les secrets GitHub ou dans le fichier local chiffre.
 
-Roundcube est installe sur le conteneur web et utilise la base `roundcube`. PostfixAdmin est present dans le role web mais reste desactive par defaut, car son schema SQL n'est pas encore celui utilise par Postfix et Dovecot dans ce projet.
+Roundcube est installe sur le conteneur web et utilise la base `roundcube`. PostfixAdmin est present dans le role web et peut etre active avec `postfixadmin_enabled: true`. En mode `mail_schema: postfixadmin`, Postfix, Dovecot et PostfixAdmin utilisent les memes tables mail.
 
 Les logs mail sont envoyes vers le conteneur IA. Le workflow genere `mail_log_forwarding_enabled`, `mail_log_ai_host` et `mail_log_ai_port` dans `group_vars/all.yml`.
 

@@ -32,11 +32,14 @@ La version utilisee est controlee par `roundcube_twofactor_plugin_version`. La v
 
 PostfixAdmin est prepare dans le role mais desactive par defaut avec `postfixadmin_enabled: false`.
 
-La raison est importante : le projet utilise deja un schema PostgreSQL maison pour les comptes virtuels (`mail_domains`, `mail_users`, `mail_aliases`), alors que PostfixAdmin attend son propre schema. L'activer sans aligner les requetes Postfix/Dovecot ne permettrait pas de gerer correctement les comptes mail existants.
+Le projet peut utiliser le schema PostfixAdmin avec `mail_schema: postfixadmin`. Dans ce mode, Postfix et Dovecot lisent les tables `domain`, `mailbox` et `alias`, les memes tables que PostfixAdmin administre.
 
-Quand le schema est aligne, l'activation se fait avec :
+L'activation se fait avec :
 
 ```yaml
+mail_schema: postfixadmin
 postfixadmin_enabled: true
 postfixadmin_setup_password_hash: "hash-genere-par-postfixadmin"
 ```
+
+`postfixadmin_password_scheme` vaut `php_crypt:SHA512` par defaut afin de generer des mots de passe compatibles avec Dovecot.

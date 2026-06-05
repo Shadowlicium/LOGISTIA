@@ -6,6 +6,7 @@
       - db_password | length > 0
       - mail_users is defined
       - mail_users | length > 0
+      - mail_schema | default('postfixadmin') in ['postfixadmin', 'custom']
     fail_msg: "Define db_password and mail_users in ansible/group_vars/mail.yml or ANSIBLE_MAIL_VARS."
 
 - name: Ensure mail users have an address and password
@@ -115,6 +116,84 @@
       GRANT USAGE ON SCHEMA public TO {{ db_user }};
       GRANT SELECT ON mail_domains, mail_users, mail_aliases TO {{ db_user }};
 
+- name: Create PostfixAdmin-compatible mail schema
+  become_user: postgres
+  community.postgresql.postgresql_query:
+    db: "{{ db_name }}"
+    query: |
+      CREATE TABLE IF NOT EXISTS domain (
+        domain VARCHAR(255) PRIMARY KEY,
+        description VARCHAR(255) NOT NULL DEFAULT '',
+        aliases INTEGER NOT NULL DEFAULT 0,
+        mailboxes INTEGER NOT NULL DEFAULT 0,
+        maxquota BIGINT NOT NULL DEFAULT 0,
+        quota BIGINT NOT NULL DEFAULT 0,
+        transport VARCHAR(255) NOT NULL DEFAULT '',
+        backupmx BOOLEAN NOT NULL DEFAULT false,
+        created TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        modified TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        active BOOLEAN NOT NULL DEFAULT true
+      );
+
+      CREATE TABLE IF NOT EXISTS mailbox (
+        username VARCHAR(255) PRIMARY KEY,
+        password VARCHAR(255) NOT NULL,
+        name VARCHAR(255) NOT NULL DEFAULT '',
+        maildir VARCHAR(255) NOT NULL,
+        quota BIGINT NOT NULL DEFAULT 0,
+        local_part VARCHAR(255) NOT NULL,
+        domain VARCHAR(255) NOT NULL REFERENCES domain(domain) ON DELETE CASCADE,
+        created TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        modified TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        active BOOLEAN NOT NULL DEFAULT true
+      );
+
+      CREATE TABLE IF NOT EXISTS alias (
+        address VARCHAR(255) PRIMARY KEY,
+        goto TEXT NOT NULL,
+        domain VARCHAR(255) NOT NULL REFERENCES domain(domain) ON DELETE CASCADE,
+        created TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        modified TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        active BOOLEAN NOT NULL DEFAULT true
+      );
+
+      CREATE TABLE IF NOT EXISTS admin (
+        username VARCHAR(255) PRIMARY KEY,
+        password VARCHAR(255) NOT NULL DEFAULT '',
+        superadmin BOOLEAN NOT NULL DEFAULT false,
+        created TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        modified TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        active BOOLEAN NOT NULL DEFAULT true
+      );
+
+      CREATE TABLE IF NOT EXISTS domain_admins (
+        username VARCHAR(255) NOT NULL,
+        domain VARCHAR(255) NOT NULL,
+        created TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        active BOOLEAN NOT NULL DEFAULT true,
+        PRIMARY KEY (username, domain)
+      );
+
+      CREATE TABLE IF NOT EXISTS log (
+        id SERIAL PRIMARY KEY,
+        timestamp TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        username VARCHAR(255) NOT NULL DEFAULT '',
+        domain VARCHAR(255) NOT NULL DEFAULT '',
+        action VARCHAR(255) NOT NULL DEFAULT '',
+        data TEXT NOT NULL DEFAULT ''
+      );
+
+      CREATE TABLE IF NOT EXISTS config (
+        name VARCHAR(64) PRIMARY KEY,
+        value TEXT NOT NULL
+      );
+
+      GRANT CONNECT ON DATABASE {{ db_name }} TO {{ db_user }};
+      GRANT USAGE ON SCHEMA public TO {{ db_user }};
+      GRANT SELECT, INSERT, UPDATE, DELETE ON domain, mailbox, alias, admin, domain_admins, log, config TO {{ db_user }};
+      GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO {{ db_user }};
+  when: mail_schema | default('postfixadmin') == 'postfixadmin'
+
 - name: Insert mail domain
   become_user: postgres
   community.postgresql.postgresql_query:
@@ -169,6 +248,95 @@
       source: "{{ item.source }}"
       destination: "{{ item.destination }}"
   loop: "{{ mail_aliases | default([]) }}"
+  no_log: true
+
+- name: Insert PostfixAdmin domain
+  become_user: postgres
+  community.postgresql.postgresql_query:
+    db: "{{ db_name }}"
+    query: |
+      INSERT INTO domain (domain, description, active)
+      VALUES (%(domain)s, %(description)s, true)
+      ON CONFLICT (domain) DO UPDATE SET
+        description = EXCLUDED.description,
+        modified = CURRENT_TIMESTAMP,
+        active = true;
+    named_args:
+      domain: "{{ mail_domain }}"
+      description: "LOGISTIA mail domain"
+  when: mail_schema | default('postfixadmin') == 'postfixadmin'
+
+- name: Insert PostfixAdmin virtual mailboxes
+  become_user: postgres
+  community.postgresql.postgresql_query:
+    db: "{{ db_name }}"
+    query: |
+      INSERT INTO mailbox (username, password, name, maildir, local_part, domain, active)
+      VALUES (
+        %(email)s,
+        %(password_hash)s,
+        %(name)s,
+        %(maildir)s,
+        %(local_part)s,
+        %(domain)s,
+        true
+      )
+      ON CONFLICT (username) DO UPDATE SET
+        password = EXCLUDED.password,
+        name = EXCLUDED.name,
+        maildir = EXCLUDED.maildir,
+        local_part = EXCLUDED.local_part,
+        domain = EXCLUDED.domain,
+        modified = CURRENT_TIMESTAMP,
+        active = true;
+    named_args:
+      domain: "{{ mail_domain }}"
+      email: "{{ item.email if item.email is defined else item.name ~ '@' ~ mail_domain }}"
+      local_part: "{{ (item.email if item.email is defined else item.name ~ '@' ~ mail_domain).split('@')[0] }}"
+      name: "{{ item.name if item.name is defined else (item.email if item.email is defined else item.name ~ '@' ~ mail_domain).split('@')[0] }}"
+      password_hash: "{{ item.password | password_hash('sha512', ((item.email if item.email is defined else item.name ~ '@' ~ mail_domain) | hash('sha1'))[:16]) }}"
+      maildir: "{{ item.maildir if item.maildir is defined else mail_domain ~ '/' ~ ((item.email if item.email is defined else item.name ~ '@' ~ mail_domain).split('@')[0]) ~ '/' }}"
+  loop: "{{ mail_users }}"
+  when: mail_schema | default('postfixadmin') == 'postfixadmin'
+  no_log: true
+
+- name: Insert PostfixAdmin self aliases for virtual mailboxes
+  become_user: postgres
+  community.postgresql.postgresql_query:
+    db: "{{ db_name }}"
+    query: |
+      INSERT INTO alias (address, goto, domain, active)
+      VALUES (%(email)s, %(email)s, %(domain)s, true)
+      ON CONFLICT (address) DO UPDATE SET
+        goto = EXCLUDED.goto,
+        domain = EXCLUDED.domain,
+        modified = CURRENT_TIMESTAMP,
+        active = true;
+    named_args:
+      domain: "{{ mail_domain }}"
+      email: "{{ item.email if item.email is defined else item.name ~ '@' ~ mail_domain }}"
+  loop: "{{ mail_users }}"
+  when: mail_schema | default('postfixadmin') == 'postfixadmin'
+  no_log: true
+
+- name: Insert PostfixAdmin virtual aliases
+  become_user: postgres
+  community.postgresql.postgresql_query:
+    db: "{{ db_name }}"
+    query: |
+      INSERT INTO alias (address, goto, domain, active)
+      VALUES (%(source)s, %(destination)s, %(domain)s, true)
+      ON CONFLICT (address) DO UPDATE SET
+        goto = EXCLUDED.goto,
+        domain = EXCLUDED.domain,
+        modified = CURRENT_TIMESTAMP,
+        active = true;
+    named_args:
+      domain: "{{ mail_domain }}"
+      source: "{{ item.source }}"
+      destination: "{{ item.destination }}"
+  loop: "{{ mail_aliases | default([]) }}"
+  when: mail_schema | default('postfixadmin') == 'postfixadmin'
   no_log: true
 
 - name: Create Roundcube database user when configured

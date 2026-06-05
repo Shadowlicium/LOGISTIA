@@ -2,4 +2,8 @@ user = {{ db_user }}
 password = {{ db_password }}
 hosts = {{ db_host }}
 dbname = {{ db_name }}
+{% if mail_schema | default('postfixadmin') == 'postfixadmin' %}
+query = SELECT maildir FROM mailbox WHERE username = '%s' AND active = true
+{% else %}
 query = SELECT maildir FROM mail_users WHERE email = '%s' AND active = true
+{% endif %}

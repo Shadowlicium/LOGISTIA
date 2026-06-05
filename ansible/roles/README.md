@@ -109,4 +109,6 @@ Ce choix evite de creer un compte Linux par adresse mail. Postfix et Dovecot int
 
 Les mots de passe sont stockes en `SHA512-CRYPT`, pas en clair.
 
+Le schema mail par defaut est compatible PostfixAdmin. Les comptes initiaux viennent toujours de `ANSIBLE_MAIL_VARS`, puis PostfixAdmin peut gerer les domaines, boites et alias en utilisant les memes tables que Postfix et Dovecot.
+
 Les logs mail sont centralises vers `ollama-ia` avec rsyslog en TCP. Le role `mail_log_forwarder` configure les serveurs mail pour envoyer les evenements `mail.*`, et le role `ollama` accepte uniquement les IPs mail declarees dans `mail_log_source_ips`.

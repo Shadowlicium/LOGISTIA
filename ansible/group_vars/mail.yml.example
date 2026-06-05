@@ -13,6 +13,7 @@ db_port: 5432
 db_name: mailserver
 db_user: mailuser
 db_password: "replace-with-a-strong-database-password"
+mail_schema: postfixadmin
 db_mail_allowed_cidr: 10.10.20.0/24
 db_web_allowed_cidr: 10.10.10.0/24
 
@@ -25,8 +26,7 @@ roundcube_imap_host: "ssl://10.10.20.12:993"
 roundcube_smtp_host: "10.10.10.12"
 roundcube_smtp_port: 25
 
-# PostfixAdmin is disabled by default because its SQL schema is not the same as
-# the custom Postfix/Dovecot schema used by this project.
+# PostfixAdmin can manage the mail tables when mail_schema is postfixadmin.
 postfixadmin_enabled: false
 postfixadmin_setup_password_hash: ""
 
