@@ -17,7 +17,13 @@ provider "proxmox" {
 }
 
 # Conteneurs LXC pour réduire la consommation mémoire et s'adapter aux 24 Go max
+moved {
+  from = module.vm_web
+  to   = module.vm_web[0]
+}
+
 module "vm_web" {
+  count       = var.deploy_web ? 1 : 0
   source      = "./modules/vm"
   name        = "web-apache"
   target_node = var.proxmox_node
@@ -34,7 +40,13 @@ module "vm_web" {
   ssh_keys    = compact([var.ssh_public_key])
 }
 
+moved {
+  from = module.vm_db
+  to   = module.vm_db[0]
+}
+
 module "vm_db" {
+  count       = var.deploy_db ? 1 : 0
   source      = "./modules/vm"
   name        = "db-postgres"
   target_node = var.proxmox_node
@@ -51,7 +63,13 @@ module "vm_db" {
   ssh_keys    = compact([var.ssh_public_key])
 }
 
+moved {
+  from = module.vm_mail_backend
+  to   = module.vm_mail_backend[0]
+}
+
 module "vm_mail_backend" {
+  count       = var.deploy_mail_data ? 1 : 0
   source      = "./modules/vm"
   name        = "mail-data"
   target_node = var.proxmox_node
@@ -68,7 +86,13 @@ module "vm_mail_backend" {
   ssh_keys    = compact([var.ssh_public_key])
 }
 
+moved {
+  from = module.vm_grafana
+  to   = module.vm_grafana[0]
+}
+
 module "vm_grafana" {
+  count       = var.deploy_grafana ? 1 : 0
   source      = "./modules/vm"
   name        = "grafana"
   target_node = var.proxmox_node
@@ -85,7 +109,13 @@ module "vm_grafana" {
   ssh_keys    = compact([var.ssh_public_key])
 }
 
+moved {
+  from = module.vm_postfix
+  to   = module.vm_postfix[0]
+}
+
 module "vm_postfix" {
+  count       = var.deploy_mail_relay ? 1 : 0
   source      = "./modules/vm"
   name        = "mail-relay"
   target_node = var.proxmox_node
@@ -102,7 +132,13 @@ module "vm_postfix" {
   ssh_keys    = compact([var.ssh_public_key])
 }
 
+moved {
+  from = module.vm_ollama
+  to   = module.vm_ollama[0]
+}
+
 module "vm_ollama" {
+  count       = var.deploy_ollama ? 1 : 0
   source      = "./modules/vm"
   name        = "ollama-ia"
   target_node = var.proxmox_node

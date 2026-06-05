@@ -11,6 +11,16 @@ scrape_configs:
   - job_name: node-exporter
     static_configs:
 {% for host in groups['managed_containers'] %}
+{% set host_enabled =
+  (host in groups['webservers'] and (deploy_web | default(true))) or
+  (host in groups['mail_relays'] and (deploy_mail_relay | default(true))) or
+  (host in groups['databases'] and (deploy_db | default(true))) or
+  (host in groups['mailservers'] and (deploy_mail_data | default(true))) or
+  (host in groups['monitoring'] and (deploy_grafana | default(true))) or
+  (host in groups['ai'] and (deploy_ollama | default(true))) or
+  (host in groups['backups'] and (deploy_backup | default(true)))
+%}
+{% if host_enabled %}
       - targets:
           - "{{ hostvars[host].ansible_host }}:9100"
         labels:
@@ -32,5 +42,6 @@ scrape_configs:
           role: "web"
 {% else %}
           role: "container"
+{% endif %}
 {% endif %}
 {% endfor %}

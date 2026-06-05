@@ -4,8 +4,17 @@
 admin_ssh_public_key: "ssh-ed25519 AAAA..."
 disable_password_ssh_login: true
 
-# Set to false only when the backup server is not deployed.
-backup_enabled: true
+# Container deployment switches used by the GitHub workflow and monitoring templates.
+deploy_web: true
+deploy_mail_relay: true
+deploy_db: true
+deploy_mail_data: true
+deploy_grafana: true
+deploy_ollama: true
+deploy_backup: true
+
+# Kept for the backup roles.
+backup_enabled: "{{ deploy_backup }}"
 
 # Restore services run at boot but only restore when local data is empty,
 # unless backup_restore_force_file exists on the source machine.

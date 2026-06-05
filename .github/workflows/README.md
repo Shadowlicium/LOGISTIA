@@ -121,6 +121,12 @@ Les options disponibles au lancement sont :
 | `terraform_action = apply` | applique les changements Terraform |
 | `run_ansible = true` | lance Ansible apres Terraform |
 | `run_ansible = false` | limite l'execution a Terraform |
+| `deploy_web = true/false` | inclut ou exclut `web-apache` |
+| `deploy_mail_relay = true/false` | inclut ou exclut `mail-relay` |
+| `deploy_db = true/false` | inclut ou exclut `db-postgres` |
+| `deploy_mail_data = true/false` | inclut ou exclut `mail-data` |
+| `deploy_grafana = true/false` | inclut ou exclut `grafana` |
+| `deploy_ollama = true/false` | inclut ou exclut `ollama-ia` |
 | `deploy_backup = true` | cree et configure le serveur backup |
 | `deploy_backup = false` | exclut le serveur backup |
 
@@ -153,13 +159,13 @@ Les variables verifiees sont :
 
 Les variables `TF_VAR_*` sont lues automatiquement par Terraform.
 
-`TF_VAR_deploy_backup` vient de l'option manuelle `deploy_backup`. Elle controle la creation du conteneur backup.
+Les variables `TF_VAR_deploy_*` viennent des options manuelles du workflow. Terraform les utilise pour creer ou ignorer chaque conteneur.
 
-#### Protection du state backup
+#### Protection du state des conteneurs optionnels
 
-Si `deploy_backup = false`, le workflow verifie le state Terraform avant le plan.
+Si une option `deploy_* = false`, le workflow verifie le state Terraform avant le plan.
 
-Si un backup est deja present dans le state, le workflow echoue volontairement. Cela evite de demander a Terraform de supprimer un conteneur qui contient potentiellement les sauvegardes.
+Si le conteneur correspondant est deja present dans le state, le workflow echoue volontairement. Cela evite de demander a Terraform de supprimer une machine existante par erreur.
 
 #### Verification des secrets Ansible
 
@@ -246,7 +252,7 @@ Le workflow ecrit temporairement :
 
 Ces fichiers viennent des secrets GitHub et ne sont pas versionnes. Ils sont recrees a chaque execution du workflow.
 
-Le fichier `all.yml` contient aussi `backup_enabled`. Cette variable permet a Ansible de ne pas appliquer les roles backup quand `deploy_backup = false`.
+Le fichier `all.yml` contient aussi les variables `deploy_*`. Elles permettent aux templates de supervision, notamment Prometheus, de ne viser que les conteneurs deployes.
 
 #### Attente SSH
 
@@ -258,7 +264,7 @@ Cette commande attend que les conteneurs soient joignables en SSH avant de lance
 
 Le groupe `managed_containers` exclut Proxmox pour ne configurer que les machines creees par Terraform.
 
-Quand `deploy_backup = false`, le workflow attend `managed_containers:!backups` pour ne pas bloquer sur un serveur backup non cree.
+Quand une option `deploy_* = false`, le workflow retire le groupe Ansible correspondant de la cible d'attente SSH.
 
 #### Execution du playbook Ansible
 
@@ -268,7 +274,7 @@ ANSIBLE_ROLES_PATH=roles ansible-playbook -i inventory.ini playbooks/site.yml
 
 Le playbook installe les paquets, cree les utilisateurs d'administration, configure les services et applique les roles applicatifs.
 
-Quand `deploy_backup = false`, le playbook est lance avec `--limit "all:!backups"` pour exclure le serveur backup.
+Quand une option `deploy_* = false`, le playbook est lance avec un `--limit` qui exclut le groupe Ansible correspondant.
 
 Le step a un timeout de 45 minutes. Ce choix evite qu'un blocage APT ou reseau garde le runner occupe sans fin.
 

@@ -89,13 +89,21 @@ proxmox_password = "change-me"
 proxmox_node     = "proxmox"
 proxmox_storage  = "local-lvm"
 proxmox_bridge   = "vmbr0"
+deploy_web        = true
+deploy_mail_relay = true
+deploy_db         = true
+deploy_mail_data  = true
+deploy_grafana    = true
+deploy_ollama     = true
 deploy_backup    = true
 ssh_public_key   = "ssh-ed25519 AAAA..."
 ```
 
 `terraform.tfvars` est ignore par Git.
 
-`deploy_backup = false` permet de creer l'infrastructure sans le conteneur backup. Cette option est utile pour un deploiement de test ou pour eviter de toucher a un serveur backup existant. Sur une infrastructure deja creee avec backup, un plan Terraform doit toujours etre relu avant de passer cette variable a `false`.
+Les variables `deploy_*` permettent de choisir les conteneurs a creer. Elles valent `true` par defaut.
+
+Sur une infrastructure deja creee, passer une variable `deploy_*` a `false` prepare normalement une suppression Terraform. Le workflow GitHub Actions bloque ce cas si la machine existe deja dans le state, afin d'eviter une suppression accidentelle.
 
 ### Creation des conteneurs
 
@@ -224,12 +232,18 @@ Options disponibles :
 | `terraform_action = apply` | applique le plan Terraform |
 | `run_ansible = true` | lance Ansible apres Terraform |
 | `run_ansible = false` | limite l'execution a Terraform |
+| `deploy_web = true/false` | inclut ou exclut `web-apache` |
+| `deploy_mail_relay = true/false` | inclut ou exclut `mail-relay` |
+| `deploy_db = true/false` | inclut ou exclut `db-postgres` |
+| `deploy_mail_data = true/false` | inclut ou exclut `mail-data` |
+| `deploy_grafana = true/false` | inclut ou exclut `grafana` |
+| `deploy_ollama = true/false` | inclut ou exclut `ollama-ia` |
 | `deploy_backup = true` | cree et configure le serveur backup |
 | `deploy_backup = false` | exclut le serveur backup du deploiement |
 
 Le detail des jobs, des commandes executees et de la procedure de rollback est documente dans [.github/workflows/README.md](.github/workflows/README.md).
 
-Le workflow bloque `deploy_backup = false` si un serveur backup est deja present dans le state Terraform. Ce garde-fou evite de planifier accidentellement la suppression du conteneur qui contient les sauvegardes.
+Le workflow bloque un `deploy_* = false` si le conteneur correspondant est deja present dans le state Terraform. Ce garde-fou evite de planifier accidentellement la suppression d'une machine existante.
 
 ## Acces SSH
 

@@ -51,6 +51,42 @@ variable "vlan_backup" {
   default     = 99
 }
 
+variable "deploy_web" {
+  description = "Cree le serveur web Apache."
+  type        = bool
+  default     = true
+}
+
+variable "deploy_mail_relay" {
+  description = "Cree le relais mail en DMZ."
+  type        = bool
+  default     = true
+}
+
+variable "deploy_db" {
+  description = "Cree le serveur PostgreSQL."
+  type        = bool
+  default     = true
+}
+
+variable "deploy_mail_data" {
+  description = "Cree le serveur mail interne."
+  type        = bool
+  default     = true
+}
+
+variable "deploy_grafana" {
+  description = "Cree le serveur Grafana/Prometheus."
+  type        = bool
+  default     = true
+}
+
+variable "deploy_ollama" {
+  description = "Cree le serveur IA Ollama."
+  type        = bool
+  default     = true
+}
+
 variable "deploy_backup" {
   description = "Cree le serveur de backup. A ne pas passer a false si un backup existe deja dans le state sans procedure de conservation."
   type        = bool
