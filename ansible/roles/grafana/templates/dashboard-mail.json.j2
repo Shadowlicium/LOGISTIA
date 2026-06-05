@@ -1,0 +1,56 @@
+{
+  "uid": "logistia-mail",
+  "title": "LOGISTIA - Mail",
+  "tags": ["logistia", "mail"],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "30s",
+  "time": { "from": "now-6h", "to": "now" },
+  "panels": [
+    {
+      "id": 1,
+      "type": "timeseries",
+      "title": "Postfix queue active",
+      "gridPos": { "x": 0, "y": 0, "w": 12, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "{{ grafana_prometheus_datasource_uid }}" },
+      "targets": [
+        { "refId": "A", "expr": "logistia_postfix_queue_active", "legendFormat": "{{ '{{' }}instance{{ '}}' }}" }
+      ],
+      "fieldConfig": { "defaults": { "unit": "short", "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "orange", "value": 10 }, { "color": "red", "value": {{ grafana_alert_mail_queue }} }] } }, "overrides": [] }
+    },
+    {
+      "id": 2,
+      "type": "timeseries",
+      "title": "Postfix queue deferred",
+      "gridPos": { "x": 12, "y": 0, "w": 12, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "{{ grafana_prometheus_datasource_uid }}" },
+      "targets": [
+        { "refId": "A", "expr": "logistia_postfix_queue_deferred", "legendFormat": "{{ '{{' }}instance{{ '}}' }}" }
+      ],
+      "fieldConfig": { "defaults": { "unit": "short", "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "orange", "value": 10 }, { "color": "red", "value": {{ grafana_alert_mail_queue }} }] } }, "overrides": [] }
+    },
+    {
+      "id": 3,
+      "type": "timeseries",
+      "title": "Stockage /var/vmail",
+      "gridPos": { "x": 0, "y": 8, "w": 12, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "{{ grafana_prometheus_datasource_uid }}" },
+      "targets": [
+        { "refId": "A", "expr": "logistia_maildir_bytes", "legendFormat": "{{ '{{' }}instance{{ '}}' }}" }
+      ],
+      "fieldConfig": { "defaults": { "unit": "bytes", "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] } }, "overrides": [] }
+    },
+    {
+      "id": 4,
+      "type": "stat",
+      "title": "Services mail actifs",
+      "gridPos": { "x": 12, "y": 8, "w": 12, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "{{ grafana_prometheus_datasource_uid }}" },
+      "targets": [
+        { "refId": "A", "expr": "node_systemd_unit_state{name=~\"postfix.service|dovecot.service|rspamd.service\",state=\"active\"}", "legendFormat": "{{ '{{' }}instance{{ '}}' }} {{ '{{' }}name{{ '}}' }}" }
+      ],
+      "fieldConfig": { "defaults": { "unit": "short", "thresholds": { "mode": "absolute", "steps": [{ "color": "red", "value": null }, { "color": "green", "value": 1 }] } }, "overrides": [] }
+    }
+  ]
+}

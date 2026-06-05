@@ -21,7 +21,8 @@ Cela permet aussi de relire ou modifier un service sans toucher au reste de l'in
 | `mail_relay` | `mail-relay` | configure Postfix en relais DMZ avec Rspamd |
 | `postfix` | `mail-data` | configure Postfix pour les boites virtuelles |
 | `dovecot` | `mail-data` | configure IMAP et LMTP avec PostgreSQL |
-| `grafana` | `grafana` | installe le service de supervision |
+| `monitoring_exporter` | tous les conteneurs geres | expose les metriques Prometheus |
+| `grafana` | `grafana` | installe Prometheus, Grafana, dashboards et alertes |
 | `ollama` | `ollama-ia` | installe le service IA et l'analyse de logs |
 | `backup` | `backup` | centralise les sauvegardes PostgreSQL et mail |
 | `backup_client` | `db-postgres`, `mail-data` | autorise la collecte et prepare la restauration prudente |
@@ -86,6 +87,18 @@ Ce choix garde les sauvegardes au meme endroit et permet de planifier la collect
 - `backup_client` installe une restauration au demarrage sur DB et mail.
 
 La restauration automatique reste prudente : elle ne s'applique que si les donnees locales semblent absentes, sauf si le fichier `backup_restore_force_file` est cree manuellement sur la machine source.
+
+## Choix supervision
+
+La supervision utilise Prometheus et Grafana :
+
+- `monitoring_exporter` installe `prometheus-node-exporter` sur chaque conteneur ;
+- Prometheus tourne sur le conteneur `grafana` et scrape les exporters ;
+- Grafana est provisionne avec une datasource Prometheus ;
+- les dashboards `LOGISTIA - Infrastructure`, `LOGISTIA - Mail` et `LOGISTIA - Securite` sont fournis par fichiers ;
+- les alertes Grafana surveillent CPU, RAM, disque, queue mail et bans fail2ban.
+
+Les metriques mail et securite passent par le collecteur textfile de node_exporter. Cela evite d'ajouter des exporters specialises pour un projet de lab tout en gardant des indicateurs utiles.
 
 ## Choix mail
 

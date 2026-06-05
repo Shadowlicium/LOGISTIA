@@ -1,0 +1,56 @@
+{
+  "uid": "logistia-infra",
+  "title": "LOGISTIA - Infrastructure",
+  "tags": ["logistia", "infrastructure"],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "30s",
+  "time": { "from": "now-6h", "to": "now" },
+  "panels": [
+    {
+      "id": 1,
+      "type": "timeseries",
+      "title": "CPU par conteneur (%)",
+      "gridPos": { "x": 0, "y": 0, "w": 12, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "{{ grafana_prometheus_datasource_uid }}" },
+      "targets": [
+        { "refId": "A", "expr": "100 * (1 - avg by(instance) (rate(node_cpu_seconds_total{mode=\"idle\"}[5m])))", "legendFormat": "{{ '{{' }}instance{{ '}}' }}" }
+      ],
+      "fieldConfig": { "defaults": { "unit": "percent", "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "orange", "value": 70 }, { "color": "red", "value": {{ grafana_alert_cpu_percent }} }] } }, "overrides": [] }
+    },
+    {
+      "id": 2,
+      "type": "timeseries",
+      "title": "RAM utilisee par conteneur (%)",
+      "gridPos": { "x": 12, "y": 0, "w": 12, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "{{ grafana_prometheus_datasource_uid }}" },
+      "targets": [
+        { "refId": "A", "expr": "100 * (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes))", "legendFormat": "{{ '{{' }}instance{{ '}}' }}" }
+      ],
+      "fieldConfig": { "defaults": { "unit": "percent", "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "orange", "value": 70 }, { "color": "red", "value": {{ grafana_alert_memory_percent }} }] } }, "overrides": [] }
+    },
+    {
+      "id": 3,
+      "type": "timeseries",
+      "title": "Disque racine utilise (%)",
+      "gridPos": { "x": 0, "y": 8, "w": 12, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "{{ grafana_prometheus_datasource_uid }}" },
+      "targets": [
+        { "refId": "A", "expr": "100 * (1 - (node_filesystem_avail_bytes{mountpoint=\"/\",fstype!~\"tmpfs|overlay\"} / node_filesystem_size_bytes{mountpoint=\"/\",fstype!~\"tmpfs|overlay\"}))", "legendFormat": "{{ '{{' }}instance{{ '}}' }}" }
+      ],
+      "fieldConfig": { "defaults": { "unit": "percent", "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "orange", "value": 70 }, { "color": "red", "value": {{ grafana_alert_disk_percent }} }] } }, "overrides": [] }
+    },
+    {
+      "id": 4,
+      "type": "stat",
+      "title": "Targets Prometheus UP",
+      "gridPos": { "x": 12, "y": 8, "w": 12, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "{{ grafana_prometheus_datasource_uid }}" },
+      "targets": [
+        { "refId": "A", "expr": "sum(up{job=\"node-exporter\"})", "legendFormat": "targets up" }
+      ],
+      "fieldConfig": { "defaults": { "unit": "short", "thresholds": { "mode": "absolute", "steps": [{ "color": "red", "value": null }, { "color": "green", "value": 1 }] } }, "overrides": [] }
+    }
+  ]
+}

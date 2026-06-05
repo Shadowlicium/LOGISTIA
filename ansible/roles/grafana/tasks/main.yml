@@ -1,8 +1,14 @@
 ---
-- name: Install dependencies
+- name: Install Grafana and Prometheus dependencies
   apt:
-    name: ["apt-transport-https","software-properties-common","wget"]
+    name:
+      - apt-transport-https
+      - software-properties-common
+      - wget
+      - gpg
     state: present
+    update_cache: yes
+    lock_timeout: 120
 
 - name: Add Grafana APT key
   apt_key:
@@ -14,13 +20,98 @@
     repo: deb https://packages.grafana.com/oss/deb stable main
     state: present
 
-- name: Install grafana
+- name: Install Grafana and Prometheus
   apt:
-    name: grafana
+    name:
+      - grafana
+      - prometheus
     state: present
     update_cache: yes
+    lock_timeout: 120
 
-- name: Ensure grafana is started
+- name: Deploy Prometheus scrape configuration
+  template:
+    src: prometheus.yml.j2
+    dest: /etc/prometheus/prometheus.yml
+    owner: prometheus
+    group: prometheus
+    mode: '0644'
+  notify: Restart prometheus
+
+- name: Ensure Grafana provisioning directories exist
+  file:
+    path: "{{ item }}"
+    state: directory
+    owner: root
+    group: grafana
+    mode: '0755'
+  loop:
+    - /etc/grafana/provisioning/datasources
+    - /etc/grafana/provisioning/dashboards
+    - /etc/grafana/provisioning/alerting
+    - /var/lib/grafana/dashboards
+
+- name: Provision Prometheus datasource
+  template:
+    src: datasource-prometheus.yml.j2
+    dest: /etc/grafana/provisioning/datasources/prometheus.yml
+    owner: root
+    group: grafana
+    mode: '0644'
+  notify: Restart grafana
+
+- name: Provision dashboard provider
+  template:
+    src: dashboards-provider.yml.j2
+    dest: /etc/grafana/provisioning/dashboards/logistia.yml
+    owner: root
+    group: grafana
+    mode: '0644'
+  notify: Restart grafana
+
+- name: Deploy infrastructure dashboard
+  template:
+    src: dashboard-infrastructure.json.j2
+    dest: /var/lib/grafana/dashboards/logistia-infrastructure.json
+    owner: root
+    group: grafana
+    mode: '0644'
+  notify: Restart grafana
+
+- name: Deploy mail dashboard
+  template:
+    src: dashboard-mail.json.j2
+    dest: /var/lib/grafana/dashboards/logistia-mail.json
+    owner: root
+    group: grafana
+    mode: '0644'
+  notify: Restart grafana
+
+- name: Deploy security dashboard
+  template:
+    src: dashboard-security.json.j2
+    dest: /var/lib/grafana/dashboards/logistia-security.json
+    owner: root
+    group: grafana
+    mode: '0644'
+  notify: Restart grafana
+
+- name: Provision Grafana alert rules
+  template:
+    src: alerts.yml.j2
+    dest: /etc/grafana/provisioning/alerting/logistia.yml
+    owner: root
+    group: grafana
+    mode: '0644'
+  notify: Restart grafana
+
+- name: Ensure Prometheus is started
+  service:
+    name: prometheus
+    state: started
+    enabled: yes
+
+- name: Ensure Grafana is started
   service:
     name: grafana-server
     state: started

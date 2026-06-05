@@ -49,7 +49,7 @@ Le mail entrant arrive sur le relais en DMZ, passe par l'analyse Rspamd, puis es
 | `mail-relay` | Postfix relais SMTP, Rspamd |
 | `mail-data` | Postfix, Dovecot, boites mail virtuelles |
 | `db-postgres` | PostgreSQL, comptes et alias mail |
-| `grafana` | supervision |
+| `grafana` | Prometheus, Grafana, dashboards et alertes |
 | `ollama-ia` | serveur IA / analyse |
 | `backup` | sauvegardes PostgreSQL et mails |
 

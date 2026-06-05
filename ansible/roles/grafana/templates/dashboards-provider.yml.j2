@@ -1,0 +1,11 @@
+apiVersion: 1
+
+providers:
+  - name: LOGISTIA
+    orgId: 1
+    folder: {{ grafana_dashboard_folder }}
+    type: file
+    disableDeletion: false
+    editable: true
+    options:
+      path: /var/lib/grafana/dashboards

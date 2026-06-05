@@ -1,0 +1,9 @@
+---
+grafana_prometheus_url: http://localhost:9090
+grafana_prometheus_datasource_uid: prometheus
+grafana_dashboard_folder: LOGISTIA
+grafana_alert_cpu_percent: 85
+grafana_alert_memory_percent: 85
+grafana_alert_disk_percent: 85
+grafana_alert_mail_queue: 20
+grafana_alert_fail2ban_banned: 0

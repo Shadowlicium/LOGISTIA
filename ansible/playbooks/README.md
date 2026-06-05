@@ -18,6 +18,8 @@ Un playbook principal evite de lancer manuellement chaque role. Il decrit l'ordr
 8. backup centralise
 9. client de restauration backup sur DB et mail
 10. hardening systeme commun
+11. exporters Prometheus sur les conteneurs
+12. Grafana, Prometheus, dashboards et alertes
 
 ## Commande de verification
 
@@ -48,6 +50,14 @@ Le role `backup` prepare le serveur central, cree sa cle SSH de collecte et inst
 Le role `backup_client` passe ensuite sur `db-postgres` et `mail-data`. Il autorise la cle du serveur backup a lire les donnees, puis cree les scripts de restauration prudente au demarrage.
 
 Cet ordre evite de configurer des clients qui pointeraient vers un serveur backup pas encore initialise.
+
+## Pourquoi Grafana est applique apres monitoring_exporter
+
+Le role `monitoring_exporter` installe `prometheus-node-exporter` sur les conteneurs et expose les metriques CPU, RAM, disque, mail et securite.
+
+Le role `grafana` est applique ensuite sur le conteneur de supervision. Il installe Prometheus, configure les targets, ajoute la datasource Grafana, cree les dashboards et charge les regles d'alerte.
+
+Cet ordre evite que Prometheus demarre avec des targets qui n'existent pas encore.
 
 ## Pourquoi `become: yes`
 

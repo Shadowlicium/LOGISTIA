@@ -1,0 +1,56 @@
+{
+  "uid": "logistia-security",
+  "title": "LOGISTIA - Securite",
+  "tags": ["logistia", "security"],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "30s",
+  "time": { "from": "now-6h", "to": "now" },
+  "panels": [
+    {
+      "id": 1,
+      "type": "timeseries",
+      "title": "Fail2ban bans actifs",
+      "gridPos": { "x": 0, "y": 0, "w": 12, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "{{ grafana_prometheus_datasource_uid }}" },
+      "targets": [
+        { "refId": "A", "expr": "logistia_fail2ban_banned_current", "legendFormat": "{{ '{{' }}instance{{ '}}' }} {{ '{{' }}jail{{ '}}' }}" }
+      ],
+      "fieldConfig": { "defaults": { "unit": "short", "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "orange", "value": 1 }, { "color": "red", "value": 5 }] } }, "overrides": [] }
+    },
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "SSH password login",
+      "gridPos": { "x": 12, "y": 0, "w": 12, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "{{ grafana_prometheus_datasource_uid }}" },
+      "targets": [
+        { "refId": "A", "expr": "logistia_ssh_password_auth_enabled", "legendFormat": "{{ '{{' }}instance{{ '}}' }}" }
+      ],
+      "fieldConfig": { "defaults": { "unit": "short", "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "red", "value": 1 }] } }, "overrides": [] }
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "Fail2ban service actif",
+      "gridPos": { "x": 0, "y": 8, "w": 12, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "{{ grafana_prometheus_datasource_uid }}" },
+      "targets": [
+        { "refId": "A", "expr": "node_systemd_unit_state{name=\"fail2ban.service\",state=\"active\"}", "legendFormat": "{{ '{{' }}instance{{ '}}' }}" }
+      ],
+      "fieldConfig": { "defaults": { "unit": "short", "thresholds": { "mode": "absolute", "steps": [{ "color": "red", "value": null }, { "color": "green", "value": 1 }] } }, "overrides": [] }
+    },
+    {
+      "id": 4,
+      "type": "timeseries",
+      "title": "CPU haut risque (%)",
+      "gridPos": { "x": 12, "y": 8, "w": 12, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "{{ grafana_prometheus_datasource_uid }}" },
+      "targets": [
+        { "refId": "A", "expr": "100 * (1 - avg by(instance) (rate(node_cpu_seconds_total{mode=\"idle\"}[5m])))", "legendFormat": "{{ '{{' }}instance{{ '}}' }}" }
+      ],
+      "fieldConfig": { "defaults": { "unit": "percent", "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "orange", "value": 70 }, { "color": "red", "value": {{ grafana_alert_cpu_percent }} }] } }, "overrides": [] }
+    }
+  ]
+}

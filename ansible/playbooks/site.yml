@@ -14,11 +14,6 @@
   roles:
     - db
 
-- hosts: monitoring
-  become: yes
-  roles:
-    - grafana
-
 - hosts: mail_relays
   become: yes
   roles:
@@ -50,3 +45,14 @@
   serial: 1
   roles:
     - hardening
+
+- hosts: managed_containers
+  become: yes
+  serial: 1
+  roles:
+    - monitoring_exporter
+
+- hosts: monitoring
+  become: yes
+  roles:
+    - grafana

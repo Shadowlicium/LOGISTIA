@@ -1,0 +1,147 @@
+---
+- name: Install node exporter
+  apt:
+    name: prometheus-node-exporter
+    state: present
+    update_cache: no
+    lock_timeout: 120
+
+- name: Ensure node exporter textfile directory exists
+  file:
+    path: "{{ monitoring_node_exporter_textfile_dir }}"
+    state: directory
+    owner: prometheus
+    group: prometheus
+    mode: '0755'
+
+- name: Configure node exporter collectors
+  copy:
+    dest: /etc/default/prometheus-node-exporter
+    content: |
+      ARGS="{{ monitoring_node_exporter_args }}"
+    owner: root
+    group: root
+    mode: '0644'
+  notify: Restart node exporter
+
+- name: Ensure node exporter is enabled and started
+  service:
+    name: prometheus-node-exporter
+    enabled: yes
+    state: started
+
+- name: Deploy security metrics collector
+  template:
+    src: security-metrics.sh.j2
+    dest: /usr/local/sbin/logistia-security-metrics.sh
+    owner: root
+    group: root
+    mode: '0750'
+  when: monitoring_security_metrics_enabled | bool
+
+- name: Deploy security metrics systemd service
+  copy:
+    dest: /etc/systemd/system/logistia-security-metrics.service
+    content: |
+      [Unit]
+      Description=Collect LOGISTIA security metrics for Prometheus node exporter
+
+      [Service]
+      Type=oneshot
+      ExecStart=/usr/local/sbin/logistia-security-metrics.sh
+    owner: root
+    group: root
+    mode: '0644'
+  when: monitoring_security_metrics_enabled | bool
+  notify: Reload systemd
+
+- name: Deploy security metrics systemd timer
+  copy:
+    dest: /etc/systemd/system/logistia-security-metrics.timer
+    content: |
+      [Unit]
+      Description=Run LOGISTIA security metrics collector
+
+      [Timer]
+      OnBootSec=2min
+      OnUnitActiveSec=1min
+      Persistent=true
+      Unit=logistia-security-metrics.service
+
+      [Install]
+      WantedBy=timers.target
+    owner: root
+    group: root
+    mode: '0644'
+  when: monitoring_security_metrics_enabled | bool
+  notify: Reload systemd
+
+- name: Enable security metrics timer
+  systemd:
+    name: logistia-security-metrics.timer
+    enabled: yes
+    state: started
+    daemon_reload: yes
+  when: monitoring_security_metrics_enabled | bool
+
+- name: Deploy mail metrics collector
+  template:
+    src: mail-metrics.sh.j2
+    dest: /usr/local/sbin/logistia-mail-metrics.sh
+    owner: root
+    group: root
+    mode: '0750'
+  when:
+    - monitoring_mail_metrics_enabled | bool
+    - inventory_hostname in (groups['mail_relays'] + groups['mailservers'])
+
+- name: Deploy mail metrics systemd service
+  copy:
+    dest: /etc/systemd/system/logistia-mail-metrics.service
+    content: |
+      [Unit]
+      Description=Collect LOGISTIA mail metrics for Prometheus node exporter
+
+      [Service]
+      Type=oneshot
+      ExecStart=/usr/local/sbin/logistia-mail-metrics.sh
+    owner: root
+    group: root
+    mode: '0644'
+  when:
+    - monitoring_mail_metrics_enabled | bool
+    - inventory_hostname in (groups['mail_relays'] + groups['mailservers'])
+  notify: Reload systemd
+
+- name: Deploy mail metrics systemd timer
+  copy:
+    dest: /etc/systemd/system/logistia-mail-metrics.timer
+    content: |
+      [Unit]
+      Description=Run LOGISTIA mail metrics collector
+
+      [Timer]
+      OnBootSec=2min
+      OnUnitActiveSec=1min
+      Persistent=true
+      Unit=logistia-mail-metrics.service
+
+      [Install]
+      WantedBy=timers.target
+    owner: root
+    group: root
+    mode: '0644'
+  when:
+    - monitoring_mail_metrics_enabled | bool
+    - inventory_hostname in (groups['mail_relays'] + groups['mailservers'])
+  notify: Reload systemd
+
+- name: Enable mail metrics timer
+  systemd:
+    name: logistia-mail-metrics.timer
+    enabled: yes
+    state: started
+    daemon_reload: yes
+  when:
+    - monitoring_mail_metrics_enabled | bool
+    - inventory_hostname in (groups['mail_relays'] + groups['mailservers'])

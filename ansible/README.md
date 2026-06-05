@@ -94,6 +94,8 @@ Chaque role a une responsabilite :
 - `dovecot` configure l'acces IMAP et LMTP.
 - `backup` centralise les sauvegardes PostgreSQL et mail.
 - `backup_client` prepare la restauration prudente sur `db-postgres` et `mail-data`.
-- `grafana`, `ollama` configurent les services de leur zone.
+- `monitoring_exporter` expose les metriques CPU, RAM, disque, mail et securite.
+- `grafana` installe Grafana, Prometheus, dashboards et alertes.
+- `ollama` configure le service IA de sa zone.
 
 Cette separation rend les erreurs plus faciles a isoler et permet de relancer un role sans relire tout le projet.

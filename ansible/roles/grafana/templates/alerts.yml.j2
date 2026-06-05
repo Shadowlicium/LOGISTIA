@@ -1,0 +1,182 @@
+apiVersion: 1
+
+groups:
+  - orgId: 1
+    name: LOGISTIA infrastructure
+    folder: {{ grafana_dashboard_folder }}
+    interval: 1m
+    rules:
+      - uid: logistia-high-cpu
+        title: CPU superieur a {{ grafana_alert_cpu_percent }}%
+        condition: B
+        data:
+          - refId: A
+            datasourceUid: {{ grafana_prometheus_datasource_uid }}
+            relativeTimeRange: { from: 300, to: 0 }
+            model:
+              datasource: { type: prometheus, uid: {{ grafana_prometheus_datasource_uid }} }
+              editorMode: code
+              expr: 100 * (1 - avg by(instance) (rate(node_cpu_seconds_total{mode="idle"}[5m]))) > {{ grafana_alert_cpu_percent }}
+              instant: true
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: A
+          - refId: B
+            datasourceUid: __expr__
+            relativeTimeRange: { from: 300, to: 0 }
+            model:
+              datasource: { type: __expr__, uid: __expr__ }
+              expression: A
+              reducer: last
+              type: reduce
+              refId: B
+              conditions:
+                - evaluator: { params: [0], type: gt }
+                  operator: { type: and }
+                  query: { params: [B] }
+                  reducer: { params: [], type: last }
+                  type: query
+        noDataState: NoData
+        execErrState: Error
+        for: 5m
+        annotations: { summary: "CPU elevee sur un conteneur LOGISTIA" }
+
+      - uid: logistia-high-memory
+        title: RAM superieure a {{ grafana_alert_memory_percent }}%
+        condition: B
+        data:
+          - refId: A
+            datasourceUid: {{ grafana_prometheus_datasource_uid }}
+            relativeTimeRange: { from: 300, to: 0 }
+            model:
+              datasource: { type: prometheus, uid: {{ grafana_prometheus_datasource_uid }} }
+              editorMode: code
+              expr: 100 * (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) > {{ grafana_alert_memory_percent }}
+              instant: true
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: A
+          - refId: B
+            datasourceUid: __expr__
+            relativeTimeRange: { from: 300, to: 0 }
+            model:
+              datasource: { type: __expr__, uid: __expr__ }
+              expression: A
+              reducer: last
+              type: reduce
+              refId: B
+              conditions:
+                - evaluator: { params: [0], type: gt }
+                  operator: { type: and }
+                  query: { params: [B] }
+                  reducer: { params: [], type: last }
+                  type: query
+        noDataState: NoData
+        execErrState: Error
+        for: 5m
+        annotations: { summary: "RAM elevee sur un conteneur LOGISTIA" }
+
+      - uid: logistia-high-disk
+        title: Disque superieur a {{ grafana_alert_disk_percent }}%
+        condition: B
+        data:
+          - refId: A
+            datasourceUid: {{ grafana_prometheus_datasource_uid }}
+            relativeTimeRange: { from: 300, to: 0 }
+            model:
+              datasource: { type: prometheus, uid: {{ grafana_prometheus_datasource_uid }} }
+              editorMode: code
+              expr: 100 * (1 - (node_filesystem_avail_bytes{mountpoint="/",fstype!~"tmpfs|overlay"} / node_filesystem_size_bytes{mountpoint="/",fstype!~"tmpfs|overlay"})) > {{ grafana_alert_disk_percent }}
+              instant: true
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: A
+          - refId: B
+            datasourceUid: __expr__
+            relativeTimeRange: { from: 300, to: 0 }
+            model:
+              datasource: { type: __expr__, uid: __expr__ }
+              expression: A
+              reducer: last
+              type: reduce
+              refId: B
+              conditions:
+                - evaluator: { params: [0], type: gt }
+                  operator: { type: and }
+                  query: { params: [B] }
+                  reducer: { params: [], type: last }
+                  type: query
+        noDataState: NoData
+        execErrState: Error
+        for: 5m
+        annotations: { summary: "Disque presque plein sur un conteneur LOGISTIA" }
+
+      - uid: logistia-mail-queue
+        title: Queue mail superieure a {{ grafana_alert_mail_queue }}
+        condition: B
+        data:
+          - refId: A
+            datasourceUid: {{ grafana_prometheus_datasource_uid }}
+            relativeTimeRange: { from: 300, to: 0 }
+            model:
+              datasource: { type: prometheus, uid: {{ grafana_prometheus_datasource_uid }} }
+              editorMode: code
+              expr: logistia_postfix_queue_active + logistia_postfix_queue_deferred > {{ grafana_alert_mail_queue }}
+              instant: true
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: A
+          - refId: B
+            datasourceUid: __expr__
+            relativeTimeRange: { from: 300, to: 0 }
+            model:
+              datasource: { type: __expr__, uid: __expr__ }
+              expression: A
+              reducer: last
+              type: reduce
+              refId: B
+              conditions:
+                - evaluator: { params: [0], type: gt }
+                  operator: { type: and }
+                  query: { params: [B] }
+                  reducer: { params: [], type: last }
+                  type: query
+        noDataState: NoData
+        execErrState: Error
+        for: 5m
+        annotations: { summary: "La queue mail grossit anormalement" }
+
+      - uid: logistia-fail2ban-ban
+        title: Fail2ban a banni une IP
+        condition: B
+        data:
+          - refId: A
+            datasourceUid: {{ grafana_prometheus_datasource_uid }}
+            relativeTimeRange: { from: 300, to: 0 }
+            model:
+              datasource: { type: prometheus, uid: {{ grafana_prometheus_datasource_uid }} }
+              editorMode: code
+              expr: logistia_fail2ban_banned_current > {{ grafana_alert_fail2ban_banned }}
+              instant: true
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: A
+          - refId: B
+            datasourceUid: __expr__
+            relativeTimeRange: { from: 300, to: 0 }
+            model:
+              datasource: { type: __expr__, uid: __expr__ }
+              expression: A
+              reducer: last
+              type: reduce
+              refId: B
+              conditions:
+                - evaluator: { params: [0], type: gt }
+                  operator: { type: and }
+                  query: { params: [B] }
+                  reducer: { params: [], type: last }
+                  type: query
+        noDataState: NoData
+        execErrState: Error
+        for: 1m
+        annotations: { summary: "Fail2ban signale un bannissement actif" }

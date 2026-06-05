@@ -1,0 +1,46 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+TEXTFILE_DIR="{{ monitoring_node_exporter_textfile_dir }}"
+OUT_FILE="$TEXTFILE_DIR/logistia_mail.prom"
+TMP_FILE="$(mktemp)"
+HOST="{{ inventory_hostname }}"
+MAIL_PATH="{{ mail_vhost_base | default('/var/vmail') }}"
+
+mkdir -p "$TEXTFILE_DIR"
+
+queue_active=0
+queue_deferred=0
+if command -v postqueue >/dev/null 2>&1; then
+  queue_active="$(postqueue -p 2>/dev/null | awk 'BEGIN {count=0} /^[A-F0-9]/ && $1 !~ /\*$/ {count++} END {print count}')"
+  queue_deferred="$(postqueue -p 2>/dev/null | awk 'BEGIN {count=0} /^[A-F0-9]/ && $1 ~ /\*$/ {count++} END {print count}')"
+fi
+
+maildir_bytes=0
+if [ -d "$MAIL_PATH" ]; then
+  maildir_bytes="$(du -sb "$MAIL_PATH" 2>/dev/null | awk '{print $1}')"
+fi
+
+rspamd_up=0
+if systemctl list-unit-files rspamd.service >/dev/null 2>&1 && systemctl is-active --quiet rspamd; then
+  rspamd_up=1
+fi
+
+{
+  echo '# HELP logistia_postfix_queue_active Current Postfix active queue count.'
+  echo '# TYPE logistia_postfix_queue_active gauge'
+  echo "logistia_postfix_queue_active{instance=\"$HOST\"} ${queue_active:-0}"
+  echo '# HELP logistia_postfix_queue_deferred Current Postfix deferred queue count.'
+  echo '# TYPE logistia_postfix_queue_deferred gauge'
+  echo "logistia_postfix_queue_deferred{instance=\"$HOST\"} ${queue_deferred:-0}"
+  echo '# HELP logistia_maildir_bytes Size of virtual mail storage in bytes.'
+  echo '# TYPE logistia_maildir_bytes gauge'
+  echo "logistia_maildir_bytes{instance=\"$HOST\"} ${maildir_bytes:-0}"
+  echo '# HELP logistia_rspamd_up Rspamd service status on relay hosts.'
+  echo '# TYPE logistia_rspamd_up gauge'
+  echo "logistia_rspamd_up{instance=\"$HOST\"} $rspamd_up"
+} > "$TMP_FILE"
+
+chown prometheus:prometheus "$TMP_FILE"
+chmod 0644 "$TMP_FILE"
+mv "$TMP_FILE" "$OUT_FILE"

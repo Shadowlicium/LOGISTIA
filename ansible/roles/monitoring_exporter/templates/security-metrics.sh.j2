@@ -1,0 +1,36 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+TEXTFILE_DIR="{{ monitoring_node_exporter_textfile_dir }}"
+OUT_FILE="$TEXTFILE_DIR/logistia_security.prom"
+TMP_FILE="$(mktemp)"
+HOST="{{ inventory_hostname }}"
+
+mkdir -p "$TEXTFILE_DIR"
+
+{
+  echo '# HELP logistia_fail2ban_banned_current Current number of banned IPs by fail2ban jail.'
+  echo '# TYPE logistia_fail2ban_banned_current gauge'
+  if command -v fail2ban-client >/dev/null 2>&1 && systemctl is-active --quiet fail2ban; then
+    fail2ban-client status 2>/dev/null | awk -F: '/Jail list/ {print $2}' | tr ',' '\n' | while read -r jail; do
+      jail="$(echo "$jail" | xargs)"
+      [ -z "$jail" ] && continue
+      banned="$(fail2ban-client status "$jail" 2>/dev/null | awk -F: '/Currently banned/ {gsub(/ /, "", $2); print $2}')"
+      echo "logistia_fail2ban_banned_current{instance=\"$HOST\",jail=\"$jail\"} ${banned:-0}"
+    done
+  else
+    echo "logistia_fail2ban_banned_current{instance=\"$HOST\",jail=\"none\"} 0"
+  fi
+
+  echo '# HELP logistia_ssh_password_auth_enabled SSH password authentication state from sshd_config.'
+  echo '# TYPE logistia_ssh_password_auth_enabled gauge'
+  if grep -Eiq '^[[:space:]]*PasswordAuthentication[[:space:]]+yes' /etc/ssh/sshd_config; then
+    echo "logistia_ssh_password_auth_enabled{instance=\"$HOST\"} 1"
+  else
+    echo "logistia_ssh_password_auth_enabled{instance=\"$HOST\"} 0"
+  fi
+} > "$TMP_FILE"
+
+chown prometheus:prometheus "$TMP_FILE"
+chmod 0644 "$TMP_FILE"
+mv "$TMP_FILE" "$OUT_FILE"

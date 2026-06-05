@@ -1,0 +1,36 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: prometheus
+    static_configs:
+      - targets:
+          - localhost:9090
+
+  - job_name: node-exporter
+    static_configs:
+{% for host in groups['managed_containers'] %}
+      - targets:
+          - "{{ hostvars[host].ansible_host }}:9100"
+        labels:
+          instance: "{{ host }}"
+          machine: "{{ hostvars[host].machine_user | default(host) }}"
+{% if host in groups['mail_relays'] %}
+          role: "mail-relay"
+{% elif host in groups['mailservers'] %}
+          role: "mail-data"
+{% elif host in groups['databases'] %}
+          role: "database"
+{% elif host in groups['monitoring'] %}
+          role: "monitoring"
+{% elif host in groups['ai'] %}
+          role: "ai"
+{% elif host in groups['backups'] %}
+          role: "backup"
+{% elif host in groups['webservers'] %}
+          role: "web"
+{% else %}
+          role: "container"
+{% endif %}
+{% endfor %}

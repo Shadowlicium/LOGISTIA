@@ -1,0 +1,5 @@
+---
+monitoring_node_exporter_textfile_dir: /var/lib/prometheus/node-exporter
+monitoring_node_exporter_args: "--collector.systemd --collector.processes --collector.textfile.directory=/var/lib/prometheus/node-exporter"
+monitoring_mail_metrics_enabled: true
+monitoring_security_metrics_enabled: true
